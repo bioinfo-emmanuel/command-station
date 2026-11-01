@@ -42,7 +42,8 @@ js/cards.js       card renderers (all external text is escaped)
 js/config.js      on-device settings (localStorage)
 js/weather.js     live forecast from Open-Meteo, with cached and sample fallbacks
 js/flood.js       rain-only flood watch heuristic
-js/backend.js     reads calendar, tasks and Sheet tabs from your Apps Script link
+js/backend.js     reads calendar, tasks, Sheet tabs and the camera snapshot from your Apps Script link
+agent/            Windows script that sends camera snapshots (setup in its README)
 apps-script/      the script you paste into Google (setup in its README)
 templates/        starter CSVs for the Sheet tabs
 sw.js, manifest.webmanifest, icons/   installable app support
@@ -54,7 +55,8 @@ sw.js, manifest.webmanifest, icons/   installable app support
 | --- | --- | --- |
 | Weather, heat index, rain outlook | Open-Meteo, from the tablet | Live |
 | Calendar, tasks, Sheet tabs | Your own Google Apps Script | Cards built; show sample data until the link is connected |
-| Camera, printer, laptop stats | Local agent at home | Cards built with sample visuals; agent not built yet |
+| Camera snapshot | `agent/camera.py` on the laptop, via your Apps Script | Live once the script runs; otherwise resting or sample |
+| Printer, laptop stats | Local agent at home | Cards built with sample visuals; agent not built yet |
 
 The flood watch is a rain-only estimate from forecast rainfall. It is not a river-level reading.
 
@@ -62,9 +64,10 @@ The flood watch is a rain-only estimate from forecast rainfall. It is not a rive
 
 1. Foundation: header, DNA companion, heat index, status pills (done)
 1b. Data layer: settings, live weather and rain outlook, data link, installable app (done)
-2. Cards: agenda, tasks, tiles, research, camera, printer (this PR, on sample data)
+2. Cards: agenda, tasks, tiles, research, camera, printer (done)
+2b. Camera snapshots every 1 to 3 minutes (this PR)
 3. Full research view and editable steps
 4. Companion picker and the other companions
-5. Local agent for the Tapo camera and Bambu A1 Mini
+5. Local agent for the Bambu A1 Mini
 
 The heat index is computed from forecast temperature and humidity. It is an estimate, not an official PAGASA reading.

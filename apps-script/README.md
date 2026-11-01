@@ -36,3 +36,7 @@ Deploy > Manage deployments > edit (pencil) > Version: **New version** > Deploy.
                  "next_milestone": "", "milestone_date": "ISO", "last_update": "ISO", "public": false }]
 }
 ```
+
+## Camera snapshots (optional)
+
+`Code.gs` also accepts pictures from the Windows camera agent (`agent/README.md`). After pasting a newer `Code.gs` you must redeploy: **Deploy > Manage deployments > pencil > Version: New version > Deploy**. The link stays the same. Snapshots are held in the script cache for up to 6 hours and are not saved to your Drive.

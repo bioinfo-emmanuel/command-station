@@ -1,0 +1,6 @@
+{
+  "source": "rtsp://USERNAME:PASSWORD@CAMERA-IP:554/stream2",
+  "endpoint": "PASTE your Apps Script web app URL (ends in /exec)",
+  "token": "PASTE the same TOKEN you set in Script properties",
+  "interval": 120
+}
