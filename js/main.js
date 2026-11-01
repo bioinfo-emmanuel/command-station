@@ -5,6 +5,8 @@ import { loadConfig, saveConfig, resetConfig } from './config.js';
 import { loadWeather } from './weather.js';
 import { assessFlood } from './flood.js';
 import { loadBackend, summarize } from './backend.js';
+import { sampleModel, fromBackend } from './model.js';
+import { renderToday, renderTasks, renderWriting, renderFocus, renderDevice, renderResearch, renderCamera, renderPrinter } from './cards.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -14,8 +16,14 @@ const state = {
   hourly: { temp: mock.hourly.temp, rh: mock.hourly.rh },
   weatherSource: 'sample',
   flood: { state: mock.links.flood, total: 0, peak: 0 },
-  backend: null, // { events, tasks, ... } once connected
+  backend: null, // raw feed once connected
+  model: sampleModel(),
+  deviceTab: 'laptop',
+  battery: null,
 };
+if (params.get('laptop') === 'asleep') mock.links.laptop = 'asleep';
+const laptopOnline = () => mock.links.laptop !== 'asleep';
+if (!laptopOnline()) { state.deviceTab = 'tablet'; mock.links.camera = 'resting'; mock.links.printer = 'idle'; }
 
 /* ---------- theme: ?theme= overrides the saved setting ---------- */
 function applyTheme() {
@@ -42,16 +50,14 @@ const fmtTime = (d) => {
 };
 
 function sublineText(now) {
-  const b = state.backend;
-  if (!b) {
-    return state.cfg.backend
-      ? 'Connecting to your data link…'
-      : 'Sample data · open settings to connect your calendar and Sheet';
+  if (state.model.source === 'sample') {
+    return state.cfg.backend ? 'Connecting to your data link…' : 'Sample data · open settings to connect your calendar and Sheet';
   }
-  const upcoming = (b.events || []).filter((e) => !e.allDay && new Date(e.start) > now)[0];
-  const left = (b.tasks || []).length;
+  const m = state.model;
+  const upcoming = m.events.filter((e) => !e.allDay && e.start > now)[0];
+  const left = m.tasks.length;
   const tasks = `${left} task${left === 1 ? '' : 's'} open`;
-  return upcoming ? `${tasks} · Next up: ${upcoming.title} at ${fmtTime(new Date(upcoming.start))}` : `${tasks} · Nothing else scheduled today`;
+  return upcoming ? `${tasks} · Next up: ${upcoming.title} at ${fmtTime(upcoming.start)}` : `${tasks} · Nothing else scheduled today`;
 }
 
 function tick() {
@@ -132,6 +138,42 @@ function renderHeat(now) {
   if (px > 62) { pe.style.left = 'auto'; pe.style.right = `${100 - px + 3}%`; } else { pe.style.right = 'auto'; pe.style.left = `${px + 3}%`; }
 }
 
+/* ---------- cards ---------- */
+const put = (id, html) => { $(id).innerHTML = html; };
+function renderBoard() {
+  const now = new Date(), m = state.model;
+  put('card-today', renderToday(m, now));
+  put('card-tasks', renderTasks(m));
+  put('tile-writing', renderWriting(m, now));
+  put('tile-focus', renderFocus(m));
+  renderDeviceTile();
+  put('card-research', renderResearch(m, now));
+}
+function renderDeviceTile() { put('tile-device', renderDevice(state.deviceTab, state.battery, laptopOnline())); }
+function renderMid() {
+  put('card-camera', renderCamera(laptopOnline()));
+  put('card-printer', renderPrinter(laptopOnline()));
+}
+$('tile-device').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (b) { state.deviceTab = b.dataset.tab; renderDeviceTile(); }
+});
+if (navigator.getBattery) {
+  navigator.getBattery().then((bat) => {
+    const upd = () => { state.battery = { level: bat.level, charging: bat.charging }; renderDeviceTile(); };
+    upd(); bat.addEventListener('levelchange', upd); bat.addEventListener('chargingchange', upd);
+  }).catch(() => {});
+}
+
+/* ---------- ask bar: opens Claude with your question ---------- */
+$('ask').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const q = $('ask-input').value.trim();
+  if (!q) return;
+  window.open(`https://claude.ai/new?q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+  $('ask-input').value = '';
+});
+
 /* ---------- data refresh ---------- */
 async function refreshWeather() {
   const w = await loadWeather(state.cfg, { temp: mock.hourly.temp, rh: mock.hourly.rh, precipFull: new Array(48).fill(0) });
@@ -146,6 +188,8 @@ async function refreshWeather() {
 async function refreshBackend() {
   const r = await loadBackend(state.cfg);
   state.backend = r.ok ? r.data : null;
+  state.model = r.ok ? fromBackend(r.data) : sampleModel();
+  renderBoard();
   tick();
   return r;
 }
@@ -193,7 +237,8 @@ $('settings').addEventListener('keydown', (e) => { if (e.key === 'Escape') close
 $('s-reset').addEventListener('click', () => {
   state.cfg = resetConfig();
   state.backend = null;
-  applyTheme(); openSettings(); refreshWeather(); tick();
+  state.model = sampleModel();
+  applyTheme(); renderBoard(); openSettings(); refreshWeather(); tick();
 });
 $('s-test').addEventListener('click', async () => {
   say('Testing…');
@@ -219,8 +264,11 @@ fit();
 addEventListener('resize', fit);
 mountDna($('companion'));
 renderPills();
+renderBoard();
+renderMid();
 tick();
 setInterval(tick, 10000);
+setInterval(renderBoard, 60000);
 refreshWeather();
 refreshBackend();
 setInterval(refreshWeather, 15 * 60 * 1000);
