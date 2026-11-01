@@ -79,3 +79,35 @@ body { font-family: var(--sans); color: var(--ink); line-height: 1.25; font-vari
 @media (prefers-reduced-motion: reduce) {
   .dna-glow, .dna-rung i, .dna-rung b { animation: none; }
 }
+
+/* Pills row and buttons */
+.pills-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+.pills-row .pills { margin-top: 0; }
+button.key { border: none; cursor: pointer; font-family: inherit; padding: 9px 12px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--orange-text); outline-offset: 2px; }
+.btn {
+  border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 800; color: var(--ink);
+  padding: 12px 20px; border-radius: 16px; background: var(--key);
+  box-shadow: 0 1px 0 var(--key-hi) inset, 0 3px 0 var(--key-edge), 0 8px 14px rgba(88,66,40,0.08);
+}
+.btn.primary { background: var(--orange); color: var(--on-orange); box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 3px 0 var(--key-edge); }
+.btn.ghost { background: transparent; box-shadow: none; color: var(--muted); }
+
+/* Settings overlay */
+.overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(20,18,14,0.38); backdrop-filter: blur(6px); }
+.overlay[hidden] { display: none; }
+.panel { width: 820px; padding: 28px 32px; display: flex; flex-direction: column; gap: 14px; }
+.panel-head { display: flex; align-items: baseline; gap: 12px; }
+.panel-head h2 { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.025em; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field span { font-size: 13px; font-weight: 800; color: var(--ink2); }
+.field input, .field select {
+  font-family: inherit; font-size: 17px; font-weight: 600; color: var(--ink); background: var(--soft);
+  border: 1.5px solid var(--hair); border-radius: 14px; padding: 12px 14px; width: 100%;
+}
+.hint { margin: -4px 0 0; font-size: 13px; }
+.status-line { min-height: 22px; font-size: 14px; font-weight: 700; }
+.status-line .good { color: var(--mint-d); }
+.status-line .bad { color: var(--orange-text); }
+.panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }

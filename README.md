@@ -10,6 +10,13 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
+Open the gear icon for **Settings**: your name, theme, coordinates (weather, heat index, rain outlook) and the private data link.
+Settings are saved only in that browser, never in this repo.
+
+## Install it as an app
+
+In Chrome on the tablet open the page, then menu > **Install app** (or Add to Home screen). You get a Command Station icon that opens full-screen.
+
 Useful URL options:
 
 | Option | Effect |
@@ -28,11 +35,29 @@ js/main.js        wiring: theme, scaling, clock, pills, heat index
 js/heat.js        heat index (Rothfusz) and PAGASA bands
 js/companion.js   DNA companion
 js/mock.js        sample data, replaced source by source
+js/config.js      on-device settings (localStorage)
+js/weather.js     live forecast from Open-Meteo, with cached and sample fallbacks
+js/flood.js       rain-only flood watch heuristic
+js/backend.js     reads calendar, tasks and Sheet tabs from your Apps Script link
+apps-script/      the script you paste into Google (setup in its README)
+templates/        starter CSVs for the Sheet tabs
+sw.js, manifest.webmanifest, icons/   installable app support
 ```
+
+## Data sources
+
+| Source | Where it runs | Status |
+| --- | --- | --- |
+| Weather, heat index, rain outlook | Open-Meteo, from the tablet | Live |
+| Calendar, tasks, Sheet tabs | Your own Google Apps Script | Link ready, cards in next PR |
+| Camera, printer, laptop stats | Local agent at home | Not built yet |
+
+The flood watch is a rain-only estimate from forecast rainfall. It is not a river-level reading.
 
 ## Roadmap
 
-1. Foundation: header, DNA companion, heat index, status pills (this PR)
+1. Foundation: header, DNA companion, heat index, status pills (done)
+1b. Data layer: settings, live weather and rain outlook, data link, installable app (this PR)
 2. Agenda and tasks from Google Calendar
 3. Metric tiles and research supervision from a Google Sheet
 4. Settings panel and the other companions

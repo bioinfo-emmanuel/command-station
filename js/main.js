@@ -1,15 +1,29 @@
 import { mock } from './mock.js';
 import { heatIndexC, bandFor } from './heat.js';
 import { mountDna } from './companion.js';
+import { loadConfig, saveConfig, resetConfig } from './config.js';
+import { loadWeather } from './weather.js';
+import { assessFlood } from './flood.js';
+import { loadBackend, summarize } from './backend.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 
-/* ---------- theme: ?theme=light|night|auto ---------- */
+const state = {
+  cfg: loadConfig(),
+  hourly: { temp: mock.hourly.temp, rh: mock.hourly.rh },
+  weatherSource: 'sample',
+  flood: { state: mock.links.flood, total: 0, peak: 0 },
+  backend: null, // { events, tasks, ... } once connected
+};
+
+/* ---------- theme: ?theme= overrides the saved setting ---------- */
 function applyTheme() {
-  const want = params.get('theme') || 'light';
+  const want = params.get('theme') || state.cfg.theme || 'light';
   const night = want === 'night' || (want === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = night ? 'night' : 'light';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = night ? '#14141C' : '#F4F0E8';
 }
 
 /* ---------- scale the 1920x1080 stage to the screen ---------- */
@@ -21,7 +35,25 @@ function fit() {
   stage.style.top = `${(innerHeight - 1080 * s) / 2}px`;
 }
 
-/* ---------- clock and greeting ---------- */
+/* ---------- header text ---------- */
+const fmtTime = (d) => {
+  const h = d.getHours() % 12 || 12;
+  return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() >= 12 ? 'PM' : 'AM'}`;
+};
+
+function sublineText(now) {
+  const b = state.backend;
+  if (!b) {
+    return state.cfg.backend
+      ? 'Connecting to your data link…'
+      : 'Sample data · open settings to connect your calendar and Sheet';
+  }
+  const upcoming = (b.events || []).filter((e) => !e.allDay && new Date(e.start) > now)[0];
+  const left = (b.tasks || []).length;
+  const tasks = `${left} task${left === 1 ? '' : 's'} open`;
+  return upcoming ? `${tasks} · Next up: ${upcoming.title} at ${fmtTime(new Date(upcoming.start))}` : `${tasks} · Nothing else scheduled today`;
+}
+
 function tick() {
   const now = new Date();
   let h = now.getHours();
@@ -33,24 +65,25 @@ function tick() {
 
   const hr = now.getHours();
   const part = hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening';
-  $('greeting').textContent = `Good ${part}, ${mock.owner}`;
-  $('subline').textContent = `${mock.tasksLeft} tasks left today · Next up: ${mock.nextEvent.title} at ${mock.nextEvent.time}`;
+  $('greeting').textContent = `Good ${part}${state.cfg.name ? ', ' + state.cfg.name : ''}`;
+  $('subline').textContent = sublineText(now);
   renderHeat(now);
 }
 
 /* ---------- status pills ---------- */
 const PILL_COLORS = { ok: 'var(--mint-d)', busy: 'var(--orange)', off: 'var(--muted)', watch: 'var(--butter)', warning: 'var(--pink-d)' };
 function renderPills() {
-  const l = mock.links;
-  const asleep = l.laptop === 'asleep';
+  const l = mock.links; // laptop, camera and printer stay sample until the local agent exists
+  const f = state.flood;
+  const floodText = f.state === 'normal' ? 'normal' : `${f.state} · ${f.total} mm/24h`;
   const items = [
-    ['Laptop', l.laptop, asleep ? 'off' : 'ok'],
+    ['Laptop', l.laptop, l.laptop === 'asleep' ? 'off' : 'ok'],
     ['Camera', l.camera, l.camera === 'linked' ? 'ok' : 'off'],
     ['Printer', l.printer, l.printer === 'printing' ? 'busy' : 'off'],
-    ['Flood watch', l.flood, l.flood === 'normal' ? 'ok' : l.flood],
+    ['Flood watch', floodText, f.state === 'normal' ? 'ok' : f.state],
   ];
-  $('pills').innerHTML = items.map(([name, state, tone]) =>
-    `<div class="pill"><span class="dt" style="background:${PILL_COLORS[tone]}"></span>${name}<span class="s">${state}</span></div>`
+  $('pills').innerHTML = items.map(([name, text, tone]) =>
+    `<div class="pill"><span class="dt" style="background:${PILL_COLORS[tone]}"></span>${name}<span class="s">${text}</span></div>`
   ).join('');
 }
 
@@ -60,7 +93,8 @@ const yOf = (v) => H - ((Math.min(Math.max(v, Y_MIN), Y_MAX) - Y_MIN) / (Y_MAX -
 const BAND_FILL = { caution: 'var(--mint-soft)', xcaution: 'var(--butter-soft)', danger: 'var(--orange-soft)' };
 
 function renderHeat(now) {
-  const hi = mock.hourly.temp.map((t, i) => heatIndexC(t, mock.hourly.rh[i]));
+  const { temp, rh } = state.hourly;
+  const hi = temp.map((t, i) => heatIndexC(t, rh[i]));
   const xs = hi.map((_, i) => (i / 23) * 360);
   const pts = hi.map((v, i) => `${xs[i].toFixed(2)},${yOf(v).toFixed(2)}`);
 
@@ -73,34 +107,113 @@ function renderHeat(now) {
     <polyline points="${pts.join(' ')}" fill="none" stroke="var(--orange-text)" stroke-width="2.6"
       stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
 
-  // current value interpolated between hours
   const f = now.getHours() + now.getMinutes() / 60;
   const i0 = Math.min(Math.floor(f), 22), t = f - i0;
-  const cur = hi[i0] + (hi[i0 + 1] - hi[i0]) * t;
-  const nowX = (f / 23) * 360;
+  const lerp = (a) => a[i0] + (a[i0 + 1] - a[i0]) * t;
+  const cur = lerp(hi);
   const dot = $('heat-dot');
-  dot.style.left = `${(nowX / 360) * 100}%`;
+  dot.style.left = `${((f / 23) * 100)}%`;
   dot.style.top = `${(yOf(cur) / H) * 100}%`;
 
   const band = bandFor(cur);
   $('heat-now').textContent = `${Math.round(cur)}°`;
   $('heat-band').textContent = band.label;
   $('heat-band').style.background = band.cls === 'danger' ? 'var(--orange-soft)' : band.cls === 'xcaution' ? 'var(--butter-soft)' : band.cls === 'caution' ? 'var(--mint-soft)' : 'var(--soft)';
-
-  const air = mock.hourly.temp[i0] + (mock.hourly.temp[i0 + 1] - mock.hourly.temp[i0]) * t;
-  const rh = mock.hourly.rh[i0] + (mock.hourly.rh[i0 + 1] - mock.hourly.rh[i0]) * t;
-  $('heat-air').textContent = `Air ${Math.round(air)}° · ${Math.round(rh)}%`;
+  $('heat-air').textContent = `Air ${Math.round(lerp(temp))}° · ${Math.round(lerp(rh))}%`;
 
   const peakVal = Math.max(...hi), peakIdx = hi.indexOf(peakVal);
   const pd = $('heat-peak-dot');
   pd.style.left = `${(xs[peakIdx] / 360) * 100}%`;
   pd.style.top = `${(yOf(peakVal) / H) * 100}%`;
-  const ph = peakIdx % 12 || 12;
   const pe = $('heat-peak');
-  pe.textContent = `Peak ${Math.round(peakVal)}° · ${ph} ${peakIdx >= 12 ? 'PM' : 'AM'}`;
-  pe.style.left = `${(xs[peakIdx] / 360) * 100 + 3}%`;
+  pe.textContent = `Peak ${Math.round(peakVal)}° · ${peakIdx % 12 || 12} ${peakIdx >= 12 ? 'PM' : 'AM'}`;
+  // keep the label inside the card when the peak is late in the day
+  const px = (xs[peakIdx] / 360) * 100;
+  if (px > 62) { pe.style.left = 'auto'; pe.style.right = `${100 - px + 3}%`; } else { pe.style.right = 'auto'; pe.style.left = `${px + 3}%`; }
 }
 
+/* ---------- data refresh ---------- */
+async function refreshWeather() {
+  const w = await loadWeather(state.cfg, { temp: mock.hourly.temp, rh: mock.hourly.rh, precipFull: new Array(48).fill(0) });
+  state.hourly = { temp: w.temp, rh: w.rh };
+  state.weatherSource = w.source;
+  const nowH = new Date().getHours();
+  state.flood = assessFlood(w.precipFull.slice(nowH, nowH + 24));
+  renderPills();
+  tick();
+}
+
+async function refreshBackend() {
+  const r = await loadBackend(state.cfg);
+  state.backend = r.ok ? r.data : null;
+  tick();
+  return r;
+}
+
+/* ---------- settings ---------- */
+const form = $('settings-form');
+function openSettings() {
+  const c = state.cfg;
+  $('f-name').value = c.name;
+  $('f-theme').value = c.theme;
+  $('f-lat').value = c.lat;
+  $('f-lon').value = c.lon;
+  $('f-backend').value = c.backend;
+  $('f-token').value = c.token;
+  $('test-result').textContent = '';
+  $('settings').hidden = false;
+  $('f-name').focus();
+}
+const closeSettings = () => { $('settings').hidden = true; $('open-settings').focus(); };
+
+function readForm() {
+  const num = (v, d) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : d);
+  return {
+    name: $('f-name').value.trim(),
+    theme: $('f-theme').value,
+    lat: num($('f-lat').value, state.cfg.lat),
+    lon: num($('f-lon').value, state.cfg.lon),
+    backend: $('f-backend').value.trim(),
+    token: $('f-token').value.trim(),
+  };
+}
+
+function say(msg, cls) {
+  const el = $('test-result');
+  el.innerHTML = '';
+  const s = document.createElement('span');
+  s.className = cls || '';
+  s.textContent = msg;
+  el.appendChild(s);
+}
+
+$('open-settings').addEventListener('click', openSettings);
+$('s-cancel').addEventListener('click', closeSettings);
+$('settings').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
+$('s-reset').addEventListener('click', () => {
+  state.cfg = resetConfig();
+  state.backend = null;
+  applyTheme(); openSettings(); refreshWeather(); tick();
+});
+$('s-test').addEventListener('click', async () => {
+  say('Testing…');
+  const cfg = readForm();
+  const r = await loadBackend(cfg);
+  if (r.ok && r.source === 'live') say(`Connected · ${summarize(r.data)}`, 'good');
+  else if (r.ok) say(`Could not reach the link, showing the last saved copy (${r.error})`, 'bad');
+  else say(r.reason === 'not-configured' ? 'Paste the data link first.' : `Failed: ${r.reason}`, 'bad');
+});
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  state.cfg = readForm();
+  if (!saveConfig(state.cfg)) say('Could not save on this device.', 'bad');
+  applyTheme();
+  closeSettings();
+  refreshWeather();
+  refreshBackend();
+});
+
+/* ---------- boot ---------- */
 applyTheme();
 fit();
 addEventListener('resize', fit);
@@ -108,3 +221,11 @@ mountDna($('companion'));
 renderPills();
 tick();
 setInterval(tick, 10000);
+refreshWeather();
+refreshBackend();
+setInterval(refreshWeather, 15 * 60 * 1000);
+setInterval(refreshBackend, 5 * 60 * 1000);
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* app still works without it */ });
+}
