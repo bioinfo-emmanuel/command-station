@@ -22,6 +22,7 @@ Useful URL options:
 | Option | Effect |
 | --- | --- |
 | `?theme=night` | Night theme. Also `light` (default) and `auto` (follows the device). |
+| `?laptop=asleep` | Preview the laptop-asleep state (camera and printer resting). |
 
 The page is designed at 1920x1080 and scales to fit any screen.
 
@@ -30,11 +31,14 @@ The page is designed at 1920x1080 and scales to fit any screen.
 ```
 index.html        page shell
 css/theme.css     design tokens (light and night)
-css/app.css       layout and components
+css/app.css       header, settings and shared components
+css/cards.css     board cards
 js/main.js        wiring: theme, scaling, clock, pills, heat index
 js/heat.js        heat index (Rothfusz) and PAGASA bands
 js/companion.js   DNA companion
-js/mock.js        sample data, replaced source by source
+js/mock.js        sample status data
+js/model.js       sample model and normalizer for the Apps Script feed
+js/cards.js       card renderers (all external text is escaped)
 js/config.js      on-device settings (localStorage)
 js/weather.js     live forecast from Open-Meteo, with cached and sample fallbacks
 js/flood.js       rain-only flood watch heuristic
@@ -49,18 +53,18 @@ sw.js, manifest.webmanifest, icons/   installable app support
 | Source | Where it runs | Status |
 | --- | --- | --- |
 | Weather, heat index, rain outlook | Open-Meteo, from the tablet | Live |
-| Calendar, tasks, Sheet tabs | Your own Google Apps Script | Link ready, cards in next PR |
-| Camera, printer, laptop stats | Local agent at home | Not built yet |
+| Calendar, tasks, Sheet tabs | Your own Google Apps Script | Cards built; show sample data until the link is connected |
+| Camera, printer, laptop stats | Local agent at home | Cards built with sample visuals; agent not built yet |
 
 The flood watch is a rain-only estimate from forecast rainfall. It is not a river-level reading.
 
 ## Roadmap
 
 1. Foundation: header, DNA companion, heat index, status pills (done)
-1b. Data layer: settings, live weather and rain outlook, data link, installable app (this PR)
-2. Agenda and tasks from Google Calendar
-3. Metric tiles and research supervision from a Google Sheet
-4. Settings panel and the other companions
+1b. Data layer: settings, live weather and rain outlook, data link, installable app (done)
+2. Cards: agenda, tasks, tiles, research, camera, printer (this PR, on sample data)
+3. Full research view and editable steps
+4. Companion picker and the other companions
 5. Local agent for the Tapo camera and Bambu A1 Mini
 
 The heat index is computed from forecast temperature and humidity. It is an estimate, not an official PAGASA reading.

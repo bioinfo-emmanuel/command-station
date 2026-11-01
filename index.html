@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400..800&amp;display=swap">
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/cards.css">
 </head>
 <body>
 <div id="stage">
@@ -53,7 +54,31 @@
   </header>
 
   <main id="board">
-    <div class="soon card">Cards arrive in the next pull requests: agenda, camera, printer, tiles, research.</div>
+    <div class="col col-left">
+      <section id="card-today" class="card pad today" aria-label="Today"></section>
+      <section id="card-tasks" class="card pad tasks" aria-label="Tasks"></section>
+    </div>
+
+    <div class="col col-mid">
+      <section id="card-camera" class="card cam" aria-label="Camera"></section>
+      <section id="card-printer" class="card prn" aria-label="Printer"></section>
+    </div>
+
+    <div class="col col-right">
+      <div style="display:flex;flex-direction:column;gap:14px;flex:none">
+        <section id="tile-writing" class="tile tile-write" aria-label="Writing"></section>
+        <div class="tiles2">
+          <section id="tile-focus" class="tile tile-focus" aria-label="Focus"></section>
+          <section id="tile-device" class="tile tile-dev" aria-label="Device"></section>
+        </div>
+      </div>
+      <section id="card-research" class="card research" aria-label="Research supervision"></section>
+      <form id="ask" class="card ask">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;fill:var(--orange)"><path d="M12 1.5l2.4 7.1 7.1 2.4-7.1 2.4L12 20.5l-2.4-7.1L2.5 11l7.1-2.4z"/></svg>
+        <input id="ask-input" type="text" aria-label="Ask Claude" placeholder="Ask Claude anything…" autocomplete="off">
+        <button type="submit" aria-label="Send to Claude"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke:var(--on-orange)"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+      </form>
+    </div>
   </main>
 
   <!-- Settings -->

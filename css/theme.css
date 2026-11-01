@@ -17,6 +17,8 @@
   --sky: #A9D1F5; --sky-soft: #E0EFFC;
   --pink: #FFB3C1; --pink-soft: #FFE3E8; --pink-d: #E0527A;
   --ink-tile: #1D1B16; --on-ink: #F6F2EA;
+  --cam-wall-a: #FDEBDD; --cam-wall-b: #F8D9C6; --cam-floor-a: #EBCDA6; --cam-floor-b: #DDB98A;
+  --cam-window: #BFE0F7; --cam-sofa: #C9BEF8; --cam-plant: #8ED3B5; --cam-rug: #FFC9B2;
 }
 
 :root[data-theme="night"] {
@@ -35,4 +37,6 @@
   --sky-soft: rgba(169,209,245,0.16);
   --pink-soft: rgba(255,179,193,0.16); --pink-d: #FF8AA5;
   --ink-tile: #34344A;
+  --cam-wall-a: #3A3046; --cam-wall-b: #2E2538; --cam-floor-a: #4A3A3A; --cam-floor-b: #3B2E31;
+  --cam-window: #3E5A78; --cam-sofa: #7F72C4; --cam-plant: #5FA88B; --cam-rug: #6B4A48;
 }
