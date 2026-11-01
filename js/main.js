@@ -4,9 +4,9 @@ import { mountDna } from './companion.js';
 import { loadConfig, saveConfig, resetConfig } from './config.js';
 import { loadWeather } from './weather.js';
 import { assessFlood } from './flood.js';
-import { loadBackend, summarize } from './backend.js';
+import { loadBackend, loadCamera, summarize } from './backend.js';
 import { sampleModel, fromBackend } from './model.js';
-import { renderToday, renderTasks, renderWriting, renderFocus, renderDevice, renderResearch, renderCamera, renderPrinter } from './cards.js';
+import { renderToday, renderTasks, renderWriting, renderFocus, renderDevice, renderResearch, renderCamera, renderPrinter, camAge, CAM_FRESH_MIN } from './cards.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -20,6 +20,7 @@ const state = {
   model: sampleModel(),
   deviceTab: 'laptop',
   battery: null,
+  cam: null, // { image, at } from the camera script, once the data link is connected
 };
 if (params.get('laptop') === 'asleep') mock.links.laptop = 'asleep';
 const laptopOnline = () => mock.links.laptop !== 'asleep';
@@ -78,13 +79,23 @@ function tick() {
 
 /* ---------- status pills ---------- */
 const PILL_COLORS = { ok: 'var(--mint-d)', busy: 'var(--orange)', off: 'var(--muted)', watch: 'var(--butter)', warning: 'var(--pink-d)' };
+function camMode(now = new Date()) {
+  if (!state.cfg.backend) return 'sample';
+  const c = state.cam;
+  return c && c.image && c.at && (now - c.at) / 60000 <= CAM_FRESH_MIN ? 'live' : 'resting';
+}
+function cameraPill(l) {
+  const m = camMode();
+  if (m === 'sample') return ['Camera', l.camera, l.camera === 'linked' ? 'ok' : 'off'];
+  return ['Camera', m === 'live' ? 'linked' : 'resting', m === 'live' ? 'ok' : 'off'];
+}
 function renderPills() {
   const l = mock.links; // laptop, camera and printer stay sample until the local agent exists
   const f = state.flood;
   const floodText = f.state === 'normal' ? 'normal' : `${f.state} · ${f.total} mm/24h`;
   const items = [
     ['Laptop', l.laptop, l.laptop === 'asleep' ? 'off' : 'ok'],
-    ['Camera', l.camera, l.camera === 'linked' ? 'ok' : 'off'],
+    cameraPill(l),
     ['Printer', l.printer, l.printer === 'printing' ? 'busy' : 'off'],
     ['Flood watch', floodText, f.state === 'normal' ? 'ok' : f.state],
   ];
@@ -150,8 +161,12 @@ function renderBoard() {
   put('card-research', renderResearch(m, now));
 }
 function renderDeviceTile() { put('tile-device', renderDevice(state.deviceTab, state.battery, laptopOnline())); }
+function renderCam() {
+  const mode = camMode(), c = state.cam || {};
+  put('card-camera', renderCamera({ mode, online: laptopOnline(), image: c.image, at: c.at }));
+}
 function renderMid() {
-  put('card-camera', renderCamera(laptopOnline()));
+  renderCam();
   put('card-printer', renderPrinter(laptopOnline()));
 }
 $('tile-device').addEventListener('click', (e) => {
@@ -192,6 +207,21 @@ async function refreshBackend() {
   renderBoard();
   tick();
   return r;
+}
+
+async function refreshCamera() {
+  if (!state.cfg.backend) { state.cam = null; renderCam(); renderPills(); return; }
+  const r = await loadCamera(state.cfg);
+  if (r.ok) state.cam = { image: r.image, at: r.at };
+  renderCam(); renderPills();
+}
+// keep "updated N min ago" and the fresh/resting switch honest between fetches
+function ageTick() {
+  const el = document.getElementById('cam-age');
+  const c = state.cam;
+  if (camMode() === 'live' && el && c) el.textContent = camAge(c.at);
+  else if (state.cfg.backend && !el) { /* already resting */ }
+  else if (state.cfg.backend && el) { renderCam(); renderPills(); } // just went stale
 }
 
 /* ---------- settings ---------- */
@@ -238,7 +268,8 @@ $('s-reset').addEventListener('click', () => {
   state.cfg = resetConfig();
   state.backend = null;
   state.model = sampleModel();
-  applyTheme(); renderBoard(); openSettings(); refreshWeather(); tick();
+  state.cam = null;
+  applyTheme(); renderBoard(); renderCam(); renderPills(); openSettings(); refreshWeather(); tick();
 });
 $('s-test').addEventListener('click', async () => {
   say('Testing…');
@@ -256,6 +287,7 @@ form.addEventListener('submit', (e) => {
   closeSettings();
   refreshWeather();
   refreshBackend();
+  refreshCamera();
 });
 
 /* ---------- boot ---------- */
@@ -271,6 +303,9 @@ setInterval(tick, 10000);
 setInterval(renderBoard, 60000);
 refreshWeather();
 refreshBackend();
+refreshCamera();
+setInterval(ageTick, 30 * 1000);
+setInterval(refreshCamera, 60 * 1000);
 setInterval(refreshWeather, 15 * 60 * 1000);
 setInterval(refreshBackend, 5 * 60 * 1000);
 

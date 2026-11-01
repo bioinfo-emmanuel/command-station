@@ -27,3 +27,20 @@ export function summarize(data) {
   const f = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   return [f(n(data.events), 'event', 'events'), f(n(data.tasks), 'task', 'tasks'), f(n(data.research), 'research project', 'research projects')].join(', ');
 }
+
+// Latest camera snapshot: { ok, image (base64 JPEG), at (ISO string) }. Not cached on the device.
+export async function loadCamera(cfg) {
+  if (!cfg.backend) return { ok: false, reason: 'not-configured' };
+  try {
+    const u = new URL(cfg.backend);
+    if (cfg.token) u.searchParams.set('token', cfg.token);
+    u.searchParams.set('action', 'camera');
+    const res = await fetch(u.toString(), { redirect: 'follow', cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data && data.error) throw new Error(data.error);
+    return { ok: true, image: String(data.image || ''), at: data.at ? new Date(data.at) : null };
+  } catch (err) {
+    return { ok: false, reason: String(err.message || err) };
+  }
+}

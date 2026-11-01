@@ -119,9 +119,31 @@ export function renderResearch(model, now = new Date()) {
 }
 
 /* ---------- Camera and printer (sample visuals until the local agent exists) ---------- */
-export function renderCamera(online, now = new Date()) {
+export const CAM_FRESH_MIN = 6; // a picture older than this counts as resting
+
+export function camAge(at, now = new Date()) {
+  if (!at) return '';
+  const m = Math.max(0, Math.round((now - at) / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  return `${h} h ${m % 60} min ago`;
+}
+
+// cam: { mode: 'sample' | 'live' | 'resting', online (sample only), image, at }
+export function renderCamera(cam, now = new Date()) {
+  const sample = cam.mode === 'sample';
+  const live = cam.mode === 'live';
+  const online = sample ? cam.online : live;
   const t = `${now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })} · ${clock12(now).hm}:${String(now.getSeconds()).padStart(2, '0')} ${clock12(now).ap}`;
-  const scene = online ? `
+  let scene;
+  if (live) {
+    const taken = cam.at ? `${cam.at.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })} · ${clock12(cam.at).hm} ${clock12(cam.at).ap}` : '';
+    scene = `<img src="data:image/jpeg;base64,${esc(cam.image)}" alt="Latest snapshot from the downstairs camera" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+      <div class="glass" style="left:14px;top:14px">Cam 1 · Downstairs</div>
+      <div class="glass" style="left:14px;bottom:14px">${esc(taken)}</div>`;
+  } else if (sample && online) {
+    scene = `
       <div style="left:0;right:0;bottom:0;height:34%;background:linear-gradient(180deg,var(--cam-floor-a),var(--cam-floor-b))"></div>
       <div style="left:8%;top:9%;width:23%;height:42%;box-sizing:border-box;border-radius:16px;border:8px solid var(--card);background:var(--cam-window)"></div>
       <div style="left:36%;bottom:6%;width:30%;height:14%;border-radius:50%;background:var(--cam-rug)"></div>
@@ -131,18 +153,28 @@ export function renderCamera(online, now = new Date()) {
       <div style="left:43%;bottom:30%;width:7%;height:11%;border-radius:50%;background:var(--cam-plant)"></div>
       <div class="glass" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:15px;white-space:nowrap">Your Tapo snapshot appears here</div>
       <div class="glass" style="left:14px;top:14px">Cam 1 · Downstairs</div>
-      <div class="glass" style="left:14px;bottom:14px">${esc(t)}</div>`
-    : `<div class="sleep" style="position:absolute">
+      <div class="glass" style="left:14px;bottom:14px">${esc(t)}</div>`;
+  } else {
+    const sub = sample ? 'The Tapo link runs through the laptop'
+      : cam.at ? `Last picture ${camAge(cam.at, now)}` : 'No picture yet. Start the camera script on the laptop';
+    scene = `<div class="sleep" style="position:absolute">
         <div style="position:relative;width:130px;height:130px"><div style="position:absolute;inset:0;border-radius:50%;background:var(--ink-tile);overflow:hidden">
           <div style="position:absolute;left:21px;top:21px;width:88px;height:88px;border-radius:50%;background:var(--lav)"></div>
           <div style="position:absolute;left:44px;top:44px;width:42px;height:42px;border-radius:50%;background:var(--ink-tile)"></div>
           <div class="lid" style="position:absolute;left:0;top:0;width:130px;height:50%;background:var(--ink-tile);border-radius:0 0 65px 65px/0 0 30px 30px"></div></div>
           <span class="zz" style="position:absolute;left:112px;top:20px;font-size:24px;color:var(--lav-d)">z</span><span class="zz" style="position:absolute;left:112px;top:20px;font-size:24px;color:var(--lav-d);animation-delay:-1.1s">z</span><span class="zz" style="position:absolute;left:112px;top:20px;font-size:24px;color:var(--lav-d);animation-delay:-2.2s">z</span></div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px"><b style="font-size:24px;font-weight:800;letter-spacing:-0.02em">Camera is resting</b><span class="muted" style="font-size:15px">The Tapo link runs through the laptop</span></div></div>`;
-  const bars = Array.from({ length: 24 }, (_, i) => `<i class="${[7, 8, 9].includes(i) ? 'm' : ''}" style="${i === 7 ? 'height:36px' : i === 8 ? 'height:26px' : i === 6 ? 'height:20px' : i === 9 ? 'height:14px' : ''}"></i>`).join('');
-  return `<div class="cam-hd"><h2 class="h2">Downstairs</h2>${SAMPLE}<span class="cam-stat"><i class="${online ? 'live-dot' : ''}" style="background:${online ? 'var(--orange)' : 'var(--muted)'}"></i>${online ? 'Snapshot · updated 6 s ago' : 'Paused · laptop asleep'}</span></div>
-    <div class="cam-view">${scene}</div>
-    <div class="motion"><div style="display:flex;flex-direction:column;gap:1px"><b style="font-size:15px;font-weight:800">Motion today</b><span class="muted small">3 events · last at 8:12 AM</span></div><div class="bars" role="img" aria-label="Motion activity by hour">${bars}</div></div>`;
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px"><b style="font-size:24px;font-weight:800;letter-spacing:-0.02em">Camera is resting</b><span class="muted" style="font-size:15px">${esc(sub)}</span></div></div>`;
+  }
+  const status = sample ? (online ? 'Snapshot · updated 6 s ago' : 'Paused · laptop asleep')
+    : live ? `Snapshot · updated <span id="cam-age">${esc(camAge(cam.at, now))}</span>`
+    : 'Resting · laptop asleep or script stopped';
+  let foot = '';
+  if (sample) {
+    const bars = Array.from({ length: 24 }, (_, i) => `<i class="${[7, 8, 9].includes(i) ? 'm' : ''}" style="${i === 7 ? 'height:36px' : i === 8 ? 'height:26px' : i === 6 ? 'height:20px' : i === 9 ? 'height:14px' : ''}"></i>`).join('');
+    foot = `<div class="motion"><div style="display:flex;flex-direction:column;gap:1px"><b style="font-size:15px;font-weight:800">Motion today</b><span class="muted small">3 events · last at 8:12 AM</span></div><div class="bars" role="img" aria-label="Motion activity by hour">${bars}</div></div>`;
+  }
+  return `<div class="cam-hd"><h2 class="h2">Downstairs</h2>${sample ? SAMPLE : ''}<span class="cam-stat"><i class="${online ? 'live-dot' : ''}" style="background:${online ? 'var(--orange)' : 'var(--muted)'}"></i>${status}</span></div>
+    <div class="cam-view">${scene}</div>${foot}`;
 }
 
 export function renderPrinter(online) {
