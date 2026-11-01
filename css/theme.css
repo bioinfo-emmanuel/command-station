@@ -1,0 +1,38 @@
+/* Design tokens. Light is the default; night via [data-theme="night"] or prefers-color-scheme when theme=auto. */
+:root {
+  --sans: 'Proxima Nova', 'Proxima Soft', 'Mulish', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --page: #F4F0E8; --glow: rgba(255,122,77,0.18); --glow2: rgba(201,190,248,0.40);
+  --card: #FFFFFF; --soft: #F6F2EA;
+  --ink: #1D1B16; --ink2: #46423A; --muted: #6F695E;
+  --hair: rgba(29,27,22,0.10); --track: rgba(29,27,22,0.08);
+  --shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 12px 32px rgba(88,66,40,0.08);
+  --tile-shadow: 0 1px 0 rgba(255,255,255,0.45) inset, 0 12px 26px rgba(88,66,40,0.12);
+  --key: #FFFFFF; --key-hi: rgba(255,255,255,0.9); --key-edge: rgba(29,27,22,0.14);
+
+  --orange: #FF6B3D; --orange-soft: #FFE3D6; --orange-text: #BF3B13; --on-orange: #1D1B16;
+  --lav: #C9BEF8; --lav-soft: #ECE8FD; --lav-d: #7B67E6;
+  --butter: #FFD95E; --butter-soft: #FFF3C4;
+  --mint: #A8E0C8; --mint-soft: #DDF3EA; --mint-d: #2FA37A;
+  --sky: #A9D1F5; --sky-soft: #E0EFFC;
+  --pink: #FFB3C1; --pink-soft: #FFE3E8; --pink-d: #E0527A;
+  --ink-tile: #1D1B16; --on-ink: #F6F2EA;
+}
+
+:root[data-theme="night"] {
+  --page: #14141C; --glow: rgba(255,107,61,0.16); --glow2: rgba(140,120,255,0.18);
+  --card: #1E1E29; --soft: #272736;
+  --ink: #F6F2EA; --ink2: #D6D1C6; --muted: #A9A5B8;
+  --hair: rgba(255,255,255,0.10); --track: rgba(255,255,255,0.10);
+  --shadow: 0 12px 32px rgba(0,0,0,0.35);
+  --tile-shadow: 0 12px 26px rgba(0,0,0,0.4);
+  --key: #2D2D3D; --key-hi: rgba(255,255,255,0.08); --key-edge: rgba(0,0,0,0.55);
+
+  --orange-soft: rgba(255,107,61,0.22); --orange-text: #FF8A63;
+  --lav-soft: rgba(201,190,248,0.18); --lav-d: #A596F5;
+  --butter-soft: rgba(255,217,94,0.16);
+  --mint-soft: rgba(168,224,200,0.16); --mint-d: #5FC9A0;
+  --sky-soft: rgba(169,209,245,0.16);
+  --pink-soft: rgba(255,179,193,0.16); --pink-d: #FF8AA5;
+  --ink-tile: #34344A;
+}
