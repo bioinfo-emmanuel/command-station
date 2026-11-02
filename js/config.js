@@ -15,7 +15,7 @@ export const DEFAULTS = {
   mAmbient: true, // breathing, rolling numbers, crossfades, load-in, glance rotation
   mSun: true,     // sun and moon arc under the clock
   mMoods: false,  // companion and heat widget react to the weather
-  tint: true,     // colorful cards: tinted headers, colored tags, richer empty states
+  cardStyle: 'glow', // off | glow | band | full
   pomoChime: true,
   // Optional tiles in the right column
   tileWriting: false,
@@ -25,7 +25,9 @@ export const DEFAULTS = {
 export function loadConfig() {
   try {
     const raw = localStorage.getItem(KEY);
-    return { ...DEFAULTS, ...(raw ? JSON.parse(raw) : {}) };
+    const saved = raw ? JSON.parse(raw) : {};
+    if (saved.cardStyle == null && saved.tint === false) saved.cardStyle = 'off'; // from the earlier on/off switch
+    return { ...DEFAULTS, ...saved };
   } catch {
     return { ...DEFAULTS };
   }

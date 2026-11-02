@@ -16,7 +16,7 @@ The right column shows a **Tablet** panel: battery with a 24 hour history, charg
 
 **Focus timer.** The tomato button in the header opens a Pomodoro card. Pick Classic 25/5/15, Short 15/3/10 or Deep 50/10/30, or nudge each length with the + and - buttons. While it runs the right column widens, Writing and Research step aside, the clock dims and blurs, and the companion speeds up. Breaks keep the same layout. The session only ends when you press and hold **Hold to end** for about a second. A soft chime marks each phase (switch it off in Settings). Finished focus minutes are stored on the tablet and added to the Focus tile; they are not written to the Sheet.
 
-**Colorful cards** (Settings > Look, on by default) tints each card header, colors task tags by name and shows a friendlier "Clear day" panel when nothing is left on the calendar. Switch it off for the plain white look.
+**Card style** (Settings > Look) has four settings: Off (plain white), Soft glow (default), Solid header band, and Fully colored. Task tags are colored by name and the Today card shows a friendlier "Clear day" panel when nothing is left, in every style except Off.
 
 The optional Writing tile's streak helix reads an optional `touched_dates` column on the Writing tab (comma separated dates such as `2026-10-30, 2026-11-01`). Without it, only the `last_touched` day is marked.
 Settings are saved only in that browser, never in this repo.

@@ -304,14 +304,14 @@ html:not([data-tint]) .calm em { background: var(--soft); }
 .dcell.past { opacity: 0.55; }
 
 :root { --t-today: var(--orange-soft); --t-tasks: var(--mint-soft); --t-cam: var(--lav-soft); --t-prn: var(--butter-soft); --t-res: var(--sky-soft); --t-pomo: var(--orange-soft); }
-html[data-tint] #card-today { background: linear-gradient(180deg, var(--t-today) 0, var(--card) 46%); }
-html[data-tint] #card-tasks { background: linear-gradient(180deg, var(--t-tasks) 0, var(--card) 40%); }
-html[data-tint] #card-camera { background: linear-gradient(180deg, var(--t-cam) 0, var(--card) 26%); }
-html[data-tint] #card-printer { background: linear-gradient(180deg, var(--t-prn) 0, var(--card) 44%); }
-html[data-tint] #card-research { background: linear-gradient(180deg, var(--t-res) 0, var(--card) 34%); }
-html[data-tint] #card-pomo { background: linear-gradient(180deg, var(--t-pomo) 0, var(--card) 46%); }
-html[data-tint] #board.pm-on #card-pomo:has(.phase.rest) { --t-pomo: var(--mint-soft); }
-html[data-tint] #ask { background: linear-gradient(90deg, var(--pink-soft), var(--card) 40%); }
+html[data-tint="glow"] #card-today { background: linear-gradient(180deg, var(--t-today) 0, var(--card) 46%); }
+html[data-tint="glow"] #card-tasks { background: linear-gradient(180deg, var(--t-tasks) 0, var(--card) 40%); }
+html[data-tint="glow"] #card-camera { background: linear-gradient(180deg, var(--t-cam) 0, var(--card) 26%); }
+html[data-tint="glow"] #card-printer { background: linear-gradient(180deg, var(--t-prn) 0, var(--card) 44%); }
+html[data-tint="glow"] #card-research { background: linear-gradient(180deg, var(--t-res) 0, var(--card) 34%); }
+html[data-tint="glow"] #card-pomo { background: linear-gradient(180deg, var(--t-pomo) 0, var(--card) 46%); }
+html[data-tint="glow"] #board.pm-on #card-pomo:has(.phase.rest) { --t-pomo: var(--mint-soft); }
+html[data-tint="glow"] #ask { background: linear-gradient(90deg, var(--pink-soft), var(--card) 40%); }
 
 html[data-tint] .dcell:not(.ev):not(.now):not(.past) { background: var(--mint-soft); }
 html[data-tint] .dcell.past:not(.ev) { background: var(--soft); }
@@ -327,3 +327,32 @@ html[data-tint] .tk.h2 .bx:not(.ok) { border-color: var(--butter); }
 html[data-tint] .tk.h3 .bx:not(.ok) { border-color: var(--pink-d); }
 html[data-tint] .sm { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--hair); }
 html[data-tint] .ev:not(.next):not(.past) { background: var(--soft); }
+
+/* ---- Card style: band and full ---- */
+:root { --tc-today: var(--butter); --tc-tasks: var(--mint); --tc-cam: var(--lav); --tc-prn: var(--sky); --tc-res: var(--pink); --tc-pomo: #FFD0BC; }
+html[data-tint="band"] #card-today { --tc: var(--tc-today); --bh: 64px; }
+html[data-tint="band"] #card-tasks { --tc: var(--tc-tasks); --bh: 64px; }
+html[data-tint="band"] #card-camera { --tc: var(--tc-cam); --bh: 60px; }
+html[data-tint="band"] #card-printer { --tc: var(--tc-prn); --bh: 64px; }
+html[data-tint="band"] #card-research { --tc: var(--tc-res); --bh: 58px; }
+html[data-tint="band"] #card-pomo { --tc: var(--tc-pomo); --bh: 60px; }
+html[data-tint="band"] #board.pm-on #card-pomo:has(.phase.rest) { --tc: var(--mint); }
+html[data-tint="band"] :is(#card-today, #card-tasks, #card-camera, #card-printer, #card-research, #card-pomo) { background: linear-gradient(180deg, var(--tc) 0, var(--tc) var(--bh), var(--card) var(--bh)); }
+/* header rows sit on a bright band, so they use dark ink in both themes */
+html[data-tint="band"] :is(#card-today > .row:first-child, #card-tasks > .row:first-child, .cam-hd, #card-printer > .row:first-child, #card-research > .row:first-child, #card-pomo > .row:first-child) { --ink: #1D1B16; --ink2: #46423A; --muted: #46423A; --soft: rgba(255,255,255,0.55); color: #1D1B16; }
+
+html[data-tint="full"] #card-today { --tc: var(--tc-today); }
+html[data-tint="full"] #card-tasks { --tc: var(--tc-tasks); }
+html[data-tint="full"] #card-camera { --tc: var(--tc-cam); }
+html[data-tint="full"] #card-printer { --tc: var(--tc-prn); }
+html[data-tint="full"] #card-research { --tc: var(--tc-res); }
+html[data-tint="full"] #card-pomo { --tc: var(--tc-pomo); }
+html[data-tint="full"] #board.pm-on #card-pomo:has(.phase.rest) { --tc: var(--mint); }
+html[data-tint="full"] :is(#card-today, #card-tasks, #card-camera, #card-printer, #card-research, #card-pomo) {
+  background: var(--tc); color: #1D1B16;
+  --ink: #1D1B16; --ink2: #46423A; --muted: #4A4439; --soft: rgba(255,255,255,0.5); --card: rgba(255,255,255,0.72);
+  --track: rgba(29,27,22,0.14); --hair: rgba(29,27,22,0.16); --orange-text: #A82F0A;
+}
+html[data-tint="full"] #card-pomo .btn:not(.primary):not(.hold) { background: rgba(255,255,255,0.8); }
+
+#board.pm-on .prn .fil { display: none; }
