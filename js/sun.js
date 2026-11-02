@@ -35,6 +35,15 @@ const bez = (t) => { // quadratic arc from (12,50) via (118,-26) to (224,50)
   return [a * 12 + b * 118 + c * 224, a * 50 + b * -26 + c * 50];
 };
 
+/* "Sunset 5:28 PM" or "Sunrise 5:53 AM": whichever is next. */
+export function sunLabel(now, lat, lon) {
+  const { rise, set } = sunTimes(now, lat, lon);
+  if (!rise || !set) return '';
+  if (now < rise) return `Sunrise ${fmt(rise)}`;
+  if (now < set) return `Sunset ${fmt(set)}`;
+  return `Sunrise tomorrow about ${fmt(rise)}`;
+}
+
 /* Returns the arc as SVG markup; shows the sun by day and a moon at night. */
 export function renderSunArc(now, lat, lon) {
   const { rise, set } = sunTimes(now, lat, lon);

@@ -22,7 +22,7 @@ function nextRing(ms) {
 }
 
 /* ---------- Today ---------- */
-export function renderToday(model, now = new Date()) {
+export function renderToday(model, now = new Date(), sunText = '') {
   const evs = model.events;
   const nextIdx = evs.findIndex((e) => !e.allDay && e.start > now);
   const strip = [];
@@ -30,9 +30,10 @@ export function renderToday(model, now = new Date()) {
     const idx = evs.findIndex((e) => !e.allDay && e.start.getHours() <= h && (e.end || e.start).getTime() > new Date(now.getFullYear(), now.getMonth(), now.getDate(), h).getTime() && e.start.getTime() < new Date(now.getFullYear(), now.getMonth(), now.getDate(), h + 1).getTime());
     const isNow = now.getHours() === h;
     const label = h % 12 || 12;
-    strip.push(`<div class="dcell${idx >= 0 ? ' ev' : ''}${isNow ? ' now' : ''}" ${idx >= 0 ? `style="--c:${EVENT_COLORS[idx % 4]}"` : ''}>${isNow && idx < 0 ? '<i></i>' : label}</div>`);
+    strip.push(`<div class="dcell${idx >= 0 ? ' ev' : ''}${isNow ? ' now' : ''}${h < now.getHours() ? ' past' : ''}" ${idx >= 0 ? `style="--c:${EVENT_COLORS[idx % 4]}"` : ''}>${isNow && idx < 0 ? '<i></i>' : label}</div>`);
   }
-  const rows = evs.length ? evs.map((e, i) => {
+  const upcoming = evs.some((e) => e.allDay || (e.end || e.start) > now);
+  const rows = evs.length && upcoming ? evs.map((e, i) => {
     const t = clock12(e.start);
     const past = !e.allDay && (e.end || e.start) <= now;
     const isNext = i === nextIdx;
@@ -42,13 +43,16 @@ export function renderToday(model, now = new Date()) {
     else if (!e.allDay) when = `<span class="when">${until(e.start - now)}</span>`;
     const time = e.allDay ? '<b>All</b><span>day</span>' : `<b>${t.hm}</b><span>${t.ap}</span>`;
     return `<div class="ev${past ? ' past' : ''}${isNext ? ' next' : ''}" style="--c:${EVENT_COLORS[i % 4]}"><div class="tm">${time}</div><div class="bar"></div><div class="nm"><b>${esc(e.title)}</b><span>${esc(e.sub)}</span></div>${when}</div>`;
-  }).join('') : '<div class="empty">Nothing on the calendar today.</div>';
+  }).join('') : '';
+  const rest = upcoming ? '' : `<div class="calm">${icon('today', 76)}<b>${evs.length ? 'All done for today' : 'Clear day'}</b><span>${evs.length ? `${evs.length} event${evs.length === 1 ? '' : 's'} finished. Nothing else scheduled.` : 'Nothing on the calendar today.'}</span>${sunText ? `<em>${esc(sunText)}</em>` : ''}</div>`;
   return `<div class="row" style="justify-content:space-between"><h2 class="h2 hi">${icon('today')}Today</h2><div class="row" style="gap:8px">${model.source === 'sample' ? SAMPLE : ''}<span class="cnt">${evs.length} event${evs.length === 1 ? '' : 's'}</span></div></div>
     <div class="daystrip" aria-hidden="true">${strip.join('')}</div>
-    <div class="evlist">${rows}</div>`;
+    <div class="evlist">${rows}${rest}</div>`;
 }
 
 /* ---------- Tasks ---------- */
+// the same tag always gets the same one of four hues
+const hue = (tag) => [...String(tag || '')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 4, 0);
 export function renderTasks(model) {
   const shown = model.tasks.slice(0, 6);
   const done = model.tasks.filter((t) => t.done).length;
@@ -57,7 +61,7 @@ export function renderTasks(model) {
     ? `<div class="row" style="gap:10px">${SAMPLE}<div class="prog"><i style="width:${total ? Math.round((done / total) * 100) : 0}%"></i></div><span class="cnt" style="background:none;padding:0">${done} of ${total}</span></div>`
     : `<span class="cnt">${total} open</span>`;
   const rows = shown.length ? shown.map((t) =>
-    `<div class="tk${t.done ? ' done' : ''}"><div class="bx${t.done ? ' ok' : ''}">${t.done ? CHECK : ''}</div><div class="tt">${esc(t.title)}</div>${t.tag ? `<span class="tg-chip">${esc(t.tag)}</span>` : ''}</div>`
+    `<div class="tk${t.done ? ' done' : ''} h${hue(t.tag)}"><div class="bx${t.done ? ' ok' : ''}">${t.done ? CHECK : ''}</div><div class="tt">${esc(t.title)}</div>${t.tag ? `<span class="tg-chip h${hue(t.tag)}">${esc(t.tag)}</span>` : ''}</div>`
   ).join('') : '<div class="empty">No open tasks. Nice.</div>';
   return `<div class="row" style="justify-content:space-between"><h2 class="h2 hi">${icon('tasks')}Tasks</h2>${head}</div><div>${rows}</div>`;
 }
