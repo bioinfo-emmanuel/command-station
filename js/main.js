@@ -1,15 +1,16 @@
 import { mock } from './mock.js';
 import { heatIndexC, bandFor } from './heat.js';
-import { COMPANIONS, mountCompanion, cheer } from './companion.js';
+import { COMPANIONS, mountCompanion, cheer, setPace } from './companion.js';
 import { renderSunArc } from './sun.js';
 import { startTablet, renderTablet, capabilities } from './tablet.js';
 import { burst, setRoll, keepAwake } from './fx.js';
-import { heartbeat } from './icons.js';
+import { heartbeat, icon } from './icons.js';
+import { createPomo, renderPomo, updatePomoLive, primeAudio, chime, mmss } from './pomo.js';
 import { loadConfig, saveConfig, resetConfig } from './config.js';
 import { loadWeather } from './weather.js';
 import { assessFlood } from './flood.js';
 import { loadBackend, loadCamera, summarize } from './backend.js';
-import { sampleModel, fromBackend } from './model.js';
+import { sampleModel, fromBackend, dateKey } from './model.js';
 import { renderToday, renderTasks, renderWriting, renderFocus, renderResearch, FOCUS_GOAL_MIN, renderCamera, renderPrinter, camAge, CAM_FRESH_MIN } from './cards.js';
 
 const $ = (id) => document.getElementById(id);
@@ -196,6 +197,7 @@ function mountCmp() {
   state.moodKey = '';
   mountCompanion($('companion'), state.cfg.companion);
   updateMood();
+  if (pomo.s.running && pomo.s.phase === 'focus') setPace($('companion'), 1.8);
 }
 function updateMood() {
   const el = $('companion');
@@ -210,19 +212,32 @@ function updateMood() {
 }
 
 /* ---------- cards ---------- */
+// minutes finished with the built-in timer on this tablet are added to today's focus
+function withLocalFocus(m) {
+  const log = pomo.log(), now = new Date();
+  const week = m.focus.week.slice();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
+    week[i] += log[dateKey(d)] || 0;
+  }
+  return { ...m, focus: { todayMin: week[6], week } };
+}
 const put = (id, html) => { $(id).innerHTML = html; };
 function renderBoard() {
-  const now = new Date(), m = state.model, c = state.cfg;
+  const now = new Date(), m = withLocalFocus(state.model), c = state.cfg;
+  const on = pomo.s.active;
   put('card-today', renderToday(m, now));
   put('card-tasks', renderTasks(m));
-  $('tile-writing').hidden = !c.tileWriting;
-  $('tile-focus').hidden = !c.tileFocus;
-  if (c.tileWriting) put('tile-writing', renderWriting(m, now));
-  if (c.tileFocus) put('tile-focus', renderFocus(m, now));
-  const n = (c.tileWriting ? 1 : 0) + (c.tileFocus ? 1 : 0);
+  const wOn = c.tileWriting && !on, fOn = c.tileFocus && !on;
+  $('tile-writing').hidden = !wOn;
+  $('tile-focus').hidden = !fOn;
+  if (wOn) put('tile-writing', renderWriting(m, now));
+  if (fOn) put('tile-focus', renderFocus(m, now));
+  const n = (wOn ? 1 : 0) + (fOn ? 1 : 0);
   $('tile-tablet').className = `tile tile-tab d${n}`;
   renderTabletTile();
-  put('card-research', renderResearch(m, now, [4, 3, 2][n]));
+  $('card-research').hidden = on;
+  if (!on) put('card-research', renderResearch(m, now, [4, 3, 2][n]));
 }
 function renderTabletTile() {
   const c = state.cfg, cam = state.cam;
@@ -247,6 +262,54 @@ function renderMid() {
   renderCam();
   put('card-printer', renderPrinter(laptopOnline()));
 }
+
+/* ---------- focus timer ---------- */
+const pomo = createPomo({
+  onChange: () => syncPomo(),
+  onPhaseEnd: (was, now) => {
+    if (state.cfg.pomoChime) chime(was === 'focus' ? 'break' : 'work');
+    cheer($('companion'));
+    if (was === 'focus') { burst($('card-pomo'), 20); withLocalFocusRefresh(); }
+  },
+});
+function withLocalFocusRefresh() { renderBoard(); }
+let pomoWasOn = false, pomoSig = '';
+function syncPomo() {
+  const s = pomo.s, on = s.active;
+  $('stage').classList.toggle('pomo-on', on);
+  $('board').classList.toggle('pm-on', on);
+  $('card-pomo').hidden = !on;
+  $('pomo-btn').classList.toggle('on', on);
+  $('pomo-ic').innerHTML = icon('tomato', 22, on ? 'tom' : '');
+  if (on) {
+    const sig = [s.phase, s.idx, s.running, s.len.focus, s.len.short, s.len.long, s.endsAt].join('|');
+    if (sig !== pomoSig) { pomoSig = sig; put('card-pomo', renderPomo(pomo)); }
+    setPace($('companion'), s.running && s.phase === 'focus' ? 1.8 : 1);
+  } else if (pomoWasOn) { pomoSig = ''; setPace($('companion'), 1); }
+  $('pomo-lab').textContent = on ? (s.running ? mmss(pomo.left()) : 'Paused') : 'Focus';
+  if (on !== pomoWasOn) { pomoWasOn = on; renderBoard(); }
+}
+$('pomo-btn').addEventListener('click', () => { primeAudio(); if (!pomo.s.active) pomo.open(); });
+$('card-pomo').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  primeAudio();
+  if (b.dataset.act === 'toggle') pomo.s.running ? pomo.toggle() : pomo.start();
+  else if (b.dataset.act === 'skip') pomo.skip();
+  else if (b.dataset.act === 'end') { /* needs a long press, see below */ }
+  else if (b.dataset.step) { const [k, d] = b.dataset.step.split(':'); pomo.step(k, +d); }
+  else if (b.dataset.preset) pomo.preset(b.dataset.preset);
+});
+// hold to end: press and keep pressed for 1.2 s
+let holdT = null;
+const holdBtn = () => $('card-pomo').querySelector('.btn.hold');
+$('card-pomo').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('.btn.hold'); if (!b) return;
+  b.classList.add('holding');
+  holdT = setTimeout(() => { holdT = null; pomo.end(); }, 1200);
+});
+const cancelHold = () => { clearTimeout(holdT); holdT = null; const b = holdBtn(); if (b) b.classList.remove('holding'); };
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('card-pomo').addEventListener(ev, cancelHold));
+setInterval(() => { pomo.tick(); if (pomo.s.active) { updatePomoLive(pomo); $('pomo-lab').textContent = pomo.s.running ? mmss(pomo.left()) : 'Paused'; } }, 1000);
 
 /* ---------- ask bar: opens Claude with your question ---------- */
 $('ask').addEventListener('submit', (e) => {
@@ -328,6 +391,7 @@ function openSettings() {
   buildPicker(c.companion);
   $('f-motion').checked = c.motion; $('f-micons').checked = c.mIcons; $('f-mambient').checked = c.mAmbient;
   $('f-msun').checked = c.mSun; $('f-mmoods').checked = c.mMoods;
+  $('f-pchime').checked = c.pomoChime;
   $('f-twriting').checked = c.tileWriting; $('f-tfocus').checked = c.tileFocus;
   $('caps').innerHTML = capabilities().map(([n, ok]) => `<span class="rchip${ok ? '' : ' no'}">${n}</span>`).join('');
   $('f-lat').value = c.lat;
@@ -352,6 +416,7 @@ function readForm() {
     companion: (document.querySelector('input[name="companion"]:checked') || {}).value || state.cfg.companion,
     motion: $('f-motion').checked, mIcons: $('f-micons').checked, mAmbient: $('f-mambient').checked,
     mSun: $('f-msun').checked, mMoods: $('f-mmoods').checked,
+    pomoChime: $('f-pchime').checked,
     tileWriting: $('f-twriting').checked, tileFocus: $('f-tfocus').checked,
   };
 }
@@ -400,6 +465,7 @@ applyMotion();
 fit();
 addEventListener('resize', fit);
 mountCmp();
+syncPomo();
 $('board').classList.add('boot');
 setTimeout(() => $('board').classList.remove('boot'), 2000);
 state.awake = keepAwake(renderTabletTile);
