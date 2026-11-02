@@ -10,7 +10,11 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
-Open the gear icon for **Settings**: your name, theme, coordinates (weather, heat index, rain outlook) and the private data link.
+Open the gear icon for **Settings**: your name, theme, coordinates (weather, heat index, rain outlook, sun arc), the **companion** (DNA, Mosquito, Shade, Orbit, Pulse, Keycap), the **Motion** switches (all motion, animated icons, ambient life, sun and moon arc, weather moods), the optional **Writing** and **Focus today** tiles, and the private data link.
+
+The right column shows a **Tablet** panel: battery with a 24 hour history, charging or time left, network, this page's memory and storage, how long the page has been running, and how fresh each data feed is. A web page cannot read CPU load or temperature, so those are not shown. Memory is Chrome only.
+
+The optional Writing tile's streak helix reads an optional `touched_dates` column on the Writing tab (comma separated dates such as `2026-10-30, 2026-11-01`). Without it, only the `last_touched` day is marked.
 Settings are saved only in that browser, never in this repo.
 
 ## Install it as an app
@@ -35,7 +39,12 @@ css/app.css       header, settings and shared components
 css/cards.css     board cards
 js/main.js        wiring: theme, scaling, clock, pills, heat index
 js/heat.js        heat index (Rothfusz) and PAGASA bands
-js/companion.js   DNA companion
+js/companion.js   the six companions, pace and cheer
+js/icons.js       animated card header icons and the data heartbeat
+js/sun.js         sunrise and sunset, sun and moon arc
+js/tablet.js      tablet health panel
+js/fx.js          bead bursts, rolling numbers, screen wake lock
+css/motion.css    all motion and the Settings switches that turn it off
 js/mock.js        sample status data
 js/model.js       sample model and normalizer for the Apps Script feed
 js/cards.js       card renderers (all external text is escaped)
@@ -67,7 +76,7 @@ The flood watch is a rain-only estimate from forecast rainfall. It is not a rive
 2. Cards: agenda, tasks, tiles, research, camera, printer (done)
 2b. Camera snapshots every 1 to 3 minutes (this PR)
 3. Full research view and editable steps
-4. Companion picker and the other companions
+4. Companion picker, animated icons, tablet panel, motion (done)
 5. Local agent for the Bambu A1 Mini
 
 The heat index is computed from forecast temperature and humidity. It is an estimate, not an official PAGASA reading.

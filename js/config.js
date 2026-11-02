@@ -8,6 +8,16 @@ export const DEFAULTS = {
   backend: '',    // Google Apps Script web app URL (see apps-script/README.md)
   token: '',
   theme: 'light', // light | night | auto
+  companion: 'dna',
+  // Motion switches (all on by default except weather moods)
+  motion: true,   // false = everything static
+  mIcons: true,   // animated card icons
+  mAmbient: true, // breathing, rolling numbers, crossfades, load-in, glance rotation
+  mSun: true,     // sun and moon arc under the clock
+  mMoods: false,  // companion and heat widget react to the weather
+  // Optional tiles in the right column
+  tileWriting: false,
+  tileFocus: false,
 };
 
 export function loadConfig() {

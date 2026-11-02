@@ -1,12 +1,16 @@
 import { mock } from './mock.js';
 import { heatIndexC, bandFor } from './heat.js';
-import { mountDna } from './companion.js';
+import { COMPANIONS, mountCompanion, cheer } from './companion.js';
+import { renderSunArc } from './sun.js';
+import { startTablet, renderTablet, capabilities } from './tablet.js';
+import { burst, setRoll, keepAwake } from './fx.js';
+import { heartbeat } from './icons.js';
 import { loadConfig, saveConfig, resetConfig } from './config.js';
 import { loadWeather } from './weather.js';
 import { assessFlood } from './flood.js';
 import { loadBackend, loadCamera, summarize } from './backend.js';
 import { sampleModel, fromBackend } from './model.js';
-import { renderToday, renderTasks, renderWriting, renderFocus, renderDevice, renderResearch, renderCamera, renderPrinter, camAge, CAM_FRESH_MIN } from './cards.js';
+import { renderToday, renderTasks, renderWriting, renderFocus, renderResearch, FOCUS_GOAL_MIN, renderCamera, renderPrinter, camAge, CAM_FRESH_MIN } from './cards.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -18,13 +22,20 @@ const state = {
   flood: { state: mock.links.flood, total: 0, peak: 0 },
   backend: null, // raw feed once connected
   model: sampleModel(),
-  deviceTab: 'laptop',
-  battery: null,
   cam: null, // { image, at } from the camera script, once the data link is connected
+  lastBackendAt: null,
+  lastWeatherAt: null,
+  rainSoon: false,
+  heatNow: 0,
+  moodKey: '',
+  camShown: null, // timestamp of the picture currently on screen, to fade only when a new one arrives
+  prevTasks: null,
+  prevFocus: null,
+  awake: null,
 };
 if (params.get('laptop') === 'asleep') mock.links.laptop = 'asleep';
 const laptopOnline = () => mock.links.laptop !== 'asleep';
-if (!laptopOnline()) { state.deviceTab = 'tablet'; mock.links.camera = 'resting'; mock.links.printer = 'idle'; }
+if (!laptopOnline()) { mock.links.camera = 'resting'; mock.links.printer = 'idle'; }
 
 /* ---------- theme: ?theme= overrides the saved setting ---------- */
 function applyTheme() {
@@ -33,6 +44,13 @@ function applyTheme() {
   document.documentElement.dataset.theme = night ? 'night' : 'light';
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = night ? '#14141C' : '#F4F0E8';
+}
+
+/* ---------- motion switches live on <html> so CSS can react ---------- */
+function applyMotion() {
+  const c = state.cfg, d = document.documentElement.dataset;
+  const set = (k, on) => { if (on) delete d[k]; else d[k] = 'off'; };
+  set('motion', c.motion); set('mIcons', c.mIcons); set('mAmbient', c.mAmbient); set('mSun', c.mSun);
 }
 
 /* ---------- scale the 1920x1080 stage to the screen ---------- */
@@ -61,13 +79,28 @@ function sublineText(now) {
   return upcoming ? `${tasks} · Next up: ${upcoming.title} at ${fmtTime(upcoming.start)}` : `${tasks} · Nothing else scheduled today`;
 }
 
+function flourish() {
+  const c = document.querySelector('.clock');
+  c.classList.remove('flourish'); void c.offsetWidth; c.classList.add('flourish');
+  setTimeout(() => c.classList.remove('flourish'), 3200);
+}
+function renderNextEvent() { put('card-today', renderToday(state.model, new Date())); }
+
 function tick() {
   const now = new Date();
   let h = now.getHours();
   const ap = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  $('clock-hm').textContent = `${h}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  setRoll($('clock-h'), String(h));
+  setRoll($('clock-m'), mm);
   $('clock-ap').textContent = ap;
+  if (now.getMinutes() === 0 && state.lastMin != null && state.lastMin !== 0) flourish();
+  if (state.lastMin !== now.getMinutes()) {
+    $('sunarc').innerHTML = renderSunArc(now, state.cfg.lat, state.cfg.lon);
+    if (state.lastMin != null) renderNextEvent();
+  }
+  state.lastMin = now.getMinutes();
   $('clock-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const hr = now.getHours();
@@ -89,19 +122,25 @@ function cameraPill(l) {
   if (m === 'sample') return ['Camera', l.camera, l.camera === 'linked' ? 'ok' : 'off'];
   return ['Camera', m === 'live' ? 'linked' : 'resting', m === 'live' ? 'ok' : 'off'];
 }
+function dataMode(now = Date.now()) {
+  if (!state.cfg.backend || state.model.source === 'sample') return 'sample';
+  return state.lastBackendAt && (now - state.lastBackendAt) / 60000 <= 15 ? 'live' : 'stale';
+}
 function renderPills() {
-  const l = mock.links; // laptop, camera and printer stay sample until the local agent exists
+  const l = mock.links; // laptop and printer stay sample until the local agent exists
   const f = state.flood;
   const floodText = f.state === 'normal' ? 'normal' : `${f.state} · ${f.total} mm/24h`;
+  const dm = dataMode();
   const items = [
     ['Laptop', l.laptop, l.laptop === 'asleep' ? 'off' : 'ok'],
     cameraPill(l),
     ['Printer', l.printer, l.printer === 'printing' ? 'busy' : 'off'],
     ['Flood watch', floodText, f.state === 'normal' ? 'ok' : f.state],
   ];
-  $('pills').innerHTML = items.map(([name, text, tone]) =>
-    `<div class="pill"><span class="dt" style="background:${PILL_COLORS[tone]}"></span>${name}<span class="s">${text}</span></div>`
+  const dots = items.map(([name, text, tone]) =>
+    `<div class="pill"><span class="dt${tone === 'ok' ? ' breathe' : ''}" style="background:${PILL_COLORS[tone]}"></span>${name}<span class="s">${text}</span></div>`
   ).join('');
+  $('pills').innerHTML = dots + `<div class="pill">${heartbeat(dm)}Data<span class="s">${dm}</span></div>`;
 }
 
 /* ---------- heat index widget ---------- */
@@ -133,7 +172,10 @@ function renderHeat(now) {
   dot.style.top = `${(yOf(cur) / H) * 100}%`;
 
   const band = bandFor(cur);
-  $('heat-now').textContent = `${Math.round(cur)}°`;
+  setRoll($('heat-now'), `${Math.round(cur)}°`);
+  state.heatNow = cur;
+  $('heat').classList.toggle('shimmer', !!state.cfg.mMoods && cur >= 33);
+  updateMood();
   $('heat-band').textContent = band.label;
   $('heat-band').style.background = band.cls === 'danger' ? 'var(--orange-soft)' : band.cls === 'xcaution' ? 'var(--butter-soft)' : band.cls === 'caution' ? 'var(--mint-soft)' : 'var(--soft)';
   $('heat-air').textContent = `Air ${Math.round(lerp(temp))}° · ${Math.round(lerp(rh))}%`;
@@ -149,35 +191,61 @@ function renderHeat(now) {
   if (px > 62) { pe.style.left = 'auto'; pe.style.right = `${100 - px + 3}%`; } else { pe.style.right = 'auto'; pe.style.left = `${px + 3}%`; }
 }
 
+/* ---------- companion: mood and reactions ---------- */
+function mountCmp() {
+  state.moodKey = '';
+  mountCompanion($('companion'), state.cfg.companion);
+  updateMood();
+}
+function updateMood() {
+  const el = $('companion');
+  const sweat = state.cfg.mMoods && state.heatNow >= 42;
+  const rain = state.cfg.mMoods && state.rainSoon;
+  const key = `${sweat ? 1 : 0}${rain ? 1 : 0}`;
+  if (key === state.moodKey) return;
+  state.moodKey = key;
+  el.querySelectorAll('.mood').forEach((n) => n.remove());
+  if (sweat) el.insertAdjacentHTML('beforeend', '<i class="mood mood-sweat"></i><i class="mood mood-sweat b"></i>');
+  if (rain) el.insertAdjacentHTML('beforeend', '<i class="mood mood-umb"></i><div class="mood mood-drops">' + [10, 34, 58, 82, 106, 130].map((x, i) => `<i style="left:${x}px;animation-delay:${(-i * 0.21).toFixed(2)}s"></i>`).join('') + '</div>');
+}
+
 /* ---------- cards ---------- */
 const put = (id, html) => { $(id).innerHTML = html; };
 function renderBoard() {
-  const now = new Date(), m = state.model;
+  const now = new Date(), m = state.model, c = state.cfg;
   put('card-today', renderToday(m, now));
   put('card-tasks', renderTasks(m));
-  put('tile-writing', renderWriting(m, now));
-  put('tile-focus', renderFocus(m));
-  renderDeviceTile();
-  put('card-research', renderResearch(m, now));
+  $('tile-writing').hidden = !c.tileWriting;
+  $('tile-focus').hidden = !c.tileFocus;
+  if (c.tileWriting) put('tile-writing', renderWriting(m, now));
+  if (c.tileFocus) put('tile-focus', renderFocus(m, now));
+  const n = (c.tileWriting ? 1 : 0) + (c.tileFocus ? 1 : 0);
+  $('tile-tablet').className = `tile tile-tab d${n}`;
+  renderTabletTile();
+  put('card-research', renderResearch(m, now, [4, 3, 2][n]));
 }
-function renderDeviceTile() { put('tile-device', renderDevice(state.deviceTab, state.battery, laptopOnline())); }
+function renderTabletTile() {
+  const c = state.cfg, cam = state.cam;
+  const live = c.backend ? 'live' : 'sample';
+  put('tile-tablet', renderTablet({
+    awake: state.awake && state.awake.supported ? state.awake.on : null,
+    feeds: [
+      { name: 'Calendar', at: state.lastBackendAt, maxMin: 15, mode: live },
+      { name: 'Camera', at: cam && cam.at, maxMin: CAM_FRESH_MIN, mode: live, soft: true },
+      { name: 'Weather', at: state.lastWeatherAt, maxMin: 45, mode: state.weatherSource === 'sample' ? 'sample' : 'live' },
+    ],
+  }));
+}
 function renderCam() {
   const mode = camMode(), c = state.cam || {};
-  put('card-camera', renderCamera({ mode, online: laptopOnline(), image: c.image, at: c.at }));
+  const stamp = c.at ? +c.at : null;
+  const fade = mode === 'live' && stamp && state.camShown && stamp !== state.camShown;
+  if (mode === 'live') state.camShown = stamp;
+  put('card-camera', renderCamera({ mode, online: laptopOnline(), image: c.image, at: c.at, fade }));
 }
 function renderMid() {
   renderCam();
   put('card-printer', renderPrinter(laptopOnline()));
-}
-$('tile-device').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-tab]');
-  if (b) { state.deviceTab = b.dataset.tab; renderDeviceTile(); }
-});
-if (navigator.getBattery) {
-  navigator.getBattery().then((bat) => {
-    const upd = () => { state.battery = { level: bat.level, charging: bat.charging }; renderDeviceTile(); };
-    upd(); bat.addEventListener('levelchange', upd); bat.addEventListener('chargingchange', upd);
-  }).catch(() => {});
 }
 
 /* ---------- ask bar: opens Claude with your question ---------- */
@@ -194,17 +262,38 @@ async function refreshWeather() {
   const w = await loadWeather(state.cfg, { temp: mock.hourly.temp, rh: mock.hourly.rh, precipFull: new Array(48).fill(0) });
   state.hourly = { temp: w.temp, rh: w.rh };
   state.weatherSource = w.source;
+  state.lastWeatherAt = w.source === 'live' ? Date.now() : (w.at || null);
   const nowH = new Date().getHours();
+  state.rainSoon = w.precipFull.slice(nowH, nowH + 3).reduce((a, b) => a + b, 0) >= 1;
   state.flood = assessFlood(w.precipFull.slice(nowH, nowH + 24));
   renderPills();
+  renderTabletTile();
   tick();
+}
+
+// the companion cheers and beads burst when something got done since the last refresh
+function reactions() {
+  const m = state.model;
+  if (m.source !== 'live') { state.prevTasks = null; state.prevFocus = null; return; }
+  const now = new Set(m.tasks.map((t) => t.title));
+  if (state.prevTasks) {
+    const finished = [...state.prevTasks].filter((t) => !now.has(t)).length;
+    if (finished) { cheer($('companion')); burst($('card-tasks'), 10 + finished * 4); }
+  }
+  state.prevTasks = now;
+  const f = m.focus.todayMin;
+  if (state.prevFocus != null && state.prevFocus < FOCUS_GOAL_MIN && f >= FOCUS_GOAL_MIN) { cheer($('companion')); burst($('companion'), 22); }
+  state.prevFocus = f;
 }
 
 async function refreshBackend() {
   const r = await loadBackend(state.cfg);
   state.backend = r.ok ? r.data : null;
   state.model = r.ok ? fromBackend(r.data) : sampleModel();
+  if (r.ok && r.source === 'live') state.lastBackendAt = Date.now();
+  reactions();
   renderBoard();
+  renderPills();
   tick();
   return r;
 }
@@ -226,10 +315,21 @@ function ageTick() {
 
 /* ---------- settings ---------- */
 const form = $('settings-form');
+function buildPicker(current) {
+  const box = $('cpick');
+  box.innerHTML = COMPANIONS.map((cp) =>
+    `<label><input type="radio" name="companion" value="${cp.id}"${cp.id === current ? ' checked' : ''}><div class="cv"><div data-k="${cp.id}"></div></div><b>${cp.name}</b><small>${cp.blurb}</small></label>`).join('');
+  box.querySelectorAll('[data-k]').forEach((d) => mountCompanion(d, d.dataset.k));
+}
 function openSettings() {
   const c = state.cfg;
   $('f-name').value = c.name;
   $('f-theme').value = c.theme;
+  buildPicker(c.companion);
+  $('f-motion').checked = c.motion; $('f-micons').checked = c.mIcons; $('f-mambient').checked = c.mAmbient;
+  $('f-msun').checked = c.mSun; $('f-mmoods').checked = c.mMoods;
+  $('f-twriting').checked = c.tileWriting; $('f-tfocus').checked = c.tileFocus;
+  $('caps').innerHTML = capabilities().map(([n, ok]) => `<span class="rchip${ok ? '' : ' no'}">${n}</span>`).join('');
   $('f-lat').value = c.lat;
   $('f-lon').value = c.lon;
   $('f-backend').value = c.backend;
@@ -249,6 +349,10 @@ function readForm() {
     lon: num($('f-lon').value, state.cfg.lon),
     backend: $('f-backend').value.trim(),
     token: $('f-token').value.trim(),
+    companion: (document.querySelector('input[name="companion"]:checked') || {}).value || state.cfg.companion,
+    motion: $('f-motion').checked, mIcons: $('f-micons').checked, mAmbient: $('f-mambient').checked,
+    mSun: $('f-msun').checked, mMoods: $('f-mmoods').checked,
+    tileWriting: $('f-twriting').checked, tileFocus: $('f-tfocus').checked,
   };
 }
 
@@ -269,7 +373,7 @@ $('s-reset').addEventListener('click', () => {
   state.backend = null;
   state.model = sampleModel();
   state.cam = null;
-  applyTheme(); renderBoard(); renderCam(); renderPills(); openSettings(); refreshWeather(); tick();
+  applyTheme(); applyMotion(); mountCmp(); renderBoard(); renderCam(); renderPills(); openSettings(); refreshWeather(); tick();
 });
 $('s-test').addEventListener('click', async () => {
   say('Testing…');
@@ -283,7 +387,7 @@ form.addEventListener('submit', (e) => {
   e.preventDefault();
   state.cfg = readForm();
   if (!saveConfig(state.cfg)) say('Could not save on this device.', 'bad');
-  applyTheme();
+  applyTheme(); applyMotion(); mountCmp(); renderBoard(); renderPills(); tick();
   closeSettings();
   refreshWeather();
   refreshBackend();
@@ -292,15 +396,21 @@ form.addEventListener('submit', (e) => {
 
 /* ---------- boot ---------- */
 applyTheme();
+applyMotion();
 fit();
 addEventListener('resize', fit);
-mountDna($('companion'));
+mountCmp();
+$('board').classList.add('boot');
+setTimeout(() => $('board').classList.remove('boot'), 2000);
+state.awake = keepAwake(renderTabletTile);
+startTablet(renderTabletTile);
 renderPills();
 renderBoard();
 renderMid();
 tick();
 setInterval(tick, 10000);
 setInterval(renderBoard, 60000);
+setInterval(renderTabletTile, 30000);
 refreshWeather();
 refreshBackend();
 refreshCamera();
