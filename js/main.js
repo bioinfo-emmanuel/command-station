@@ -1,7 +1,7 @@
 import { mock } from './mock.js';
 import { heatIndexC, bandFor } from './heat.js';
 import { COMPANIONS, mountCompanion, cheer, setPace } from './companion.js';
-import { renderSunArc } from './sun.js';
+import { renderSunArc, sunLabel } from './sun.js';
 import { startTablet, renderTablet, capabilities } from './tablet.js';
 import { burst, setRoll, keepAwake } from './fx.js';
 import { heartbeat, icon } from './icons.js';
@@ -51,6 +51,7 @@ function applyTheme() {
 function applyMotion() {
   const c = state.cfg, d = document.documentElement.dataset;
   const set = (k, on) => { if (on) delete d[k]; else d[k] = 'off'; };
+  if (c.tint) d.tint = 'on'; else delete d.tint;
   set('motion', c.motion); set('mIcons', c.mIcons); set('mAmbient', c.mAmbient); set('mSun', c.mSun);
 }
 
@@ -85,7 +86,7 @@ function flourish() {
   c.classList.remove('flourish'); void c.offsetWidth; c.classList.add('flourish');
   setTimeout(() => c.classList.remove('flourish'), 3200);
 }
-function renderNextEvent() { put('card-today', renderToday(state.model, new Date())); }
+function renderNextEvent() { put('card-today', renderToday(state.model, new Date(), sunLabel(new Date(), state.cfg.lat, state.cfg.lon))); }
 
 function tick() {
   const now = new Date();
@@ -226,7 +227,7 @@ const put = (id, html) => { $(id).innerHTML = html; };
 function renderBoard() {
   const now = new Date(), m = withLocalFocus(state.model), c = state.cfg;
   const on = pomo.s.active;
-  put('card-today', renderToday(m, now));
+  put('card-today', renderToday(m, now, sunLabel(now, c.lat, c.lon)));
   put('card-tasks', renderTasks(m));
   const wOn = c.tileWriting && !on, fOn = c.tileFocus && !on;
   $('tile-writing').hidden = !wOn;
@@ -389,6 +390,7 @@ function openSettings() {
   $('f-name').value = c.name;
   $('f-theme').value = c.theme;
   buildPicker(c.companion);
+  $('f-tint').checked = c.tint;
   $('f-motion').checked = c.motion; $('f-micons').checked = c.mIcons; $('f-mambient').checked = c.mAmbient;
   $('f-msun').checked = c.mSun; $('f-mmoods').checked = c.mMoods;
   $('f-pchime').checked = c.pomoChime;
@@ -414,6 +416,7 @@ function readForm() {
     backend: $('f-backend').value.trim(),
     token: $('f-token').value.trim(),
     companion: (document.querySelector('input[name="companion"]:checked') || {}).value || state.cfg.companion,
+    tint: $('f-tint').checked,
     motion: $('f-motion').checked, mIcons: $('f-micons').checked, mAmbient: $('f-mambient').checked,
     mSun: $('f-msun').checked, mMoods: $('f-mmoods').checked,
     pomoChime: $('f-pchime').checked,

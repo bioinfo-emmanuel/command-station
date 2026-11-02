@@ -294,3 +294,36 @@ button:focus-visible { outline: 2px solid var(--orange-text); outline-offset: 2p
 
 #board.pm-on .tile-tab.d0 { min-height: 0; justify-content: flex-start; gap: 8px; }
 #board.pm-on .prn .row > span:last-child { display: none; }
+
+/* ---- Colorful cards (Settings > Look). All of it hangs off html[data-tint], so switching it off restores the plain look. ---- */
+.calm { flex: 1.4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 6px; }
+.calm b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
+.calm span { font-size: 15px; color: var(--muted); font-weight: 600; }
+.calm em { margin-top: 8px; padding: 5px 14px; border-radius: 999px; font-style: normal; font-size: 13px; font-weight: 800; background: var(--butter-soft); color: var(--ink2); }
+html:not([data-tint]) .calm em { background: var(--soft); }
+.dcell.past { opacity: 0.55; }
+
+:root { --t-today: var(--orange-soft); --t-tasks: var(--mint-soft); --t-cam: var(--lav-soft); --t-prn: var(--butter-soft); --t-res: var(--sky-soft); --t-pomo: var(--orange-soft); }
+html[data-tint] #card-today { background: linear-gradient(180deg, var(--t-today) 0, var(--card) 46%); }
+html[data-tint] #card-tasks { background: linear-gradient(180deg, var(--t-tasks) 0, var(--card) 40%); }
+html[data-tint] #card-camera { background: linear-gradient(180deg, var(--t-cam) 0, var(--card) 26%); }
+html[data-tint] #card-printer { background: linear-gradient(180deg, var(--t-prn) 0, var(--card) 44%); }
+html[data-tint] #card-research { background: linear-gradient(180deg, var(--t-res) 0, var(--card) 34%); }
+html[data-tint] #card-pomo { background: linear-gradient(180deg, var(--t-pomo) 0, var(--card) 46%); }
+html[data-tint] #board.pm-on #card-pomo:has(.phase.rest) { --t-pomo: var(--mint-soft); }
+html[data-tint] #ask { background: linear-gradient(90deg, var(--pink-soft), var(--card) 40%); }
+
+html[data-tint] .dcell:not(.ev):not(.now):not(.past) { background: var(--mint-soft); }
+html[data-tint] .dcell.past:not(.ev) { background: var(--soft); }
+
+/* task tags: four hues, same tag always the same one */
+html[data-tint] .tg-chip.h0 { background: var(--mint-soft); }
+html[data-tint] .tg-chip.h1 { background: var(--lav-soft); }
+html[data-tint] .tg-chip.h2 { background: var(--butter-soft); }
+html[data-tint] .tg-chip.h3 { background: var(--pink-soft); }
+html[data-tint] .tk.h0 .bx:not(.ok) { border-color: var(--mint-d); }
+html[data-tint] .tk.h1 .bx:not(.ok) { border-color: var(--lav-d); }
+html[data-tint] .tk.h2 .bx:not(.ok) { border-color: var(--butter); }
+html[data-tint] .tk.h3 .bx:not(.ok) { border-color: var(--pink-d); }
+html[data-tint] .sm { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--hair); }
+html[data-tint] .ev:not(.next):not(.past) { background: var(--soft); }

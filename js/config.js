@@ -15,6 +15,7 @@ export const DEFAULTS = {
   mAmbient: true, // breathing, rolling numbers, crossfades, load-in, glance rotation
   mSun: true,     // sun and moon arc under the clock
   mMoods: false,  // companion and heat widget react to the weather
+  tint: true,     // colorful cards: tinted headers, colored tags, richer empty states
   pomoChime: true,
   // Optional tiles in the right column
   tileWriting: false,
