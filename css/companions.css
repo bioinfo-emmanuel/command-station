@@ -1,0 +1,44 @@
+/* Non-DNA companions (DNA lives in app.css). Ported from the design canvas. */
+.cmp { position: absolute; inset: 0; }
+@keyframes mq-bob { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(-2.5deg); } }
+@keyframes mq-flap { from { transform: scaleY(1); } to { transform: scaleY(0.3); } }
+@keyframes sh-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes sh-morph { 0%,100% { border-radius: 50% 50% 46% 54%/62% 62% 38% 38%; } 33% { border-radius: 54% 46% 52% 48%/58% 66% 34% 42%; } 66% { border-radius: 47% 53% 44% 56%/66% 58% 42% 34%; } }
+@keyframes sh-blink { 0%,88%,100% { transform: scaleY(1); } 92% { transform: scaleY(0.1); } }
+@keyframes sh-rise { 0% { transform: translateY(0) scale(1); opacity: 0.7; } 100% { transform: translateY(-34px) scale(0.35); opacity: 0; } }
+@keyframes ob-spin { to { transform: rotate(360deg); } }
+@keyframes ob-breathe { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes ob-morph { 0%,100% { border-radius: 58% 42% 55% 45%/48% 58% 42% 52%; } 33% { border-radius: 42% 58% 46% 54%/56% 44% 56% 44%; } 66% { border-radius: 52% 48% 40% 60%/42% 56% 44% 58%; } }
+@keyframes pl-wave { 0%,100% { transform: scaleY(0.45); } 50% { transform: scaleY(1.3); } }
+@keyframes kc-press { 0%,70%,100% { transform: translateY(0); } 78%,90% { transform: translateY(9px); } }
+@keyframes kc-bar { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+.mq-bob { animation: mq-bob 3.2s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 50%; }
+.mq-w { animation: mq-flap 0.14s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0% 50%; }
+.sh-body { animation: sh-float 5s ease-in-out infinite, sh-morph 8s ease-in-out infinite; }
+.sh-eye { animation: sh-blink 5s ease-in-out infinite; }
+.sh-w { animation: sh-rise 3.6s ease-out infinite; }
+.ob-glow { animation: ob-breathe 6s ease-in-out infinite; }
+.ob-a { animation: ob-spin 22s linear infinite; }
+.ob-b { animation: ob-spin 14s linear infinite reverse; }
+.ob-c { animation: ob-spin 9s linear infinite; }
+.ob-blob { animation: ob-morph 7s ease-in-out infinite, ob-spin 26s linear infinite; }
+.pl { animation: pl-wave 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.kc-top { animation: kc-press 3.6s ease-in-out infinite; }
+.kc-bar { animation: kc-bar 1.1s ease-in-out infinite; transform-origin: 50% 100%; }
+
+/* Reactions */
+@keyframes cheer { 0%,100% { transform: rotate(0) scale(1); } 20% { transform: rotate(-7deg) scale(1.08); } 40% { transform: rotate(6deg) scale(1.1); } 60% { transform: rotate(-4deg) scale(1.05); } 80% { transform: rotate(2deg) scale(1.02); } }
+#companion.cheer { animation: cheer 1.2s ease-in-out; }
+#companion .mood { position: absolute; z-index: 2; pointer-events: none; }
+@keyframes mood-drop { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
+@keyframes mood-rain { 0% { transform: translateY(-8px); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(36px); opacity: 0; } }
+.mood-sweat { right: 34px; top: 40px; width: 12px; height: 17px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: var(--sky); animation: mood-drop 2.4s ease-in infinite; }
+.mood-sweat.b { right: 52px; top: 58px; width: 9px; height: 13px; animation-delay: -1.2s; }
+.mood-umb { left: 50%; top: 4px; margin-left: -46px; width: 92px; height: 46px; border-radius: 46px 46px 0 0; background: var(--pink-d); }
+.mood-umb::after { content: ''; position: absolute; left: 44px; top: 46px; width: 4px; height: 38px; border-radius: 2px; background: var(--ink); opacity: 0.45; }
+.mood-drops { left: 40px; right: 40px; top: 50px; height: 80px; overflow: hidden; }
+.mood-drops i { position: absolute; top: 0; width: 3px; height: 12px; border-radius: 2px; background: var(--sky); animation: mood-rain 1.3s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-bob, .mq-w, .sh-body, .sh-eye, .sh-w, .ob-glow, .ob-a, .ob-b, .ob-c, .ob-blob, .pl, .kc-top, .kc-bar, #companion.cheer { animation: none; }
+}

@@ -1,0 +1,103 @@
+/* Motion: movement and fading only. Every group can be switched off in Settings.
+   html[data-motion="off"]        reduce motion: everything static
+   html[data-m-icons="off"]       header icons idle
+   html[data-m-ambient="off"]     breathing, rolling numbers, crossfades, load-in
+   html[data-m-sun="off"]         sun and moon arc is hidden
+*/
+@keyframes hop { 0%,18% { transform: translate(0,0); } 25% { transform: translate(3.5px,-4px); } 32%,50% { transform: translate(7px,0); } 57% { transform: translate(10.5px,-4px); } 64%,82% { transform: translate(14px,0); } 90% { transform: translate(7px,-5px); } 100% { transform: translate(0,0); } }
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(19px); } }
+@keyframes blink { 0%,88%,100% { transform: scaleY(0.12); } 93% { transform: scaleY(1); } }
+@keyframes noz { 0%,100% { transform: translateX(-8px); } 50% { transform: translateX(8px); } }
+@keyframes lay { 0% { transform: scaleX(0); } 30%,85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@keyframes pen { 0% { transform: translateX(0); } 60%,100% { transform: translateX(21px); } }
+@keyframes line { 0% { transform: scaleX(0); } 60%,100% { transform: scaleX(1); } }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@keyframes bub { 0% { transform: translateY(0) scale(0.4); opacity: 0; } 25% { opacity: 0.9; } 100% { transform: translateY(-13px) scale(1); opacity: 0; } }
+@keyframes liq { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.6px); } }
+@keyframes ecg { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -60; } }
+@keyframes breathe { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,61,0); } 50% { box-shadow: 0 0 0 7px rgba(255,107,61,0.20); } }
+@keyframes pls { 0%,100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@keyframes halo { 0%,100% { opacity: 0.22; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.28); } }
+@keyframes chip { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes fadeA { 0%,40% { opacity: 1; } 50%,90% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes fadeB { 0%,40% { opacity: 0; } 50%,90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rollOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60%); opacity: 0; } }
+@keyframes rollIn { from { transform: translateY(60%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes colon { 0%,100% { transform: scale(1); } 40% { transform: scale(1.6); } 70% { transform: scale(1); } }
+@keyframes burst { 0% { transform: translate(0,0) scale(0.3); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx),var(--dy)) scale(1); opacity: 0; } }
+@keyframes glow { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+@keyframes shimmer { 0%,100% { transform: translateY(0) scaleX(1); opacity: 0.4; } 50% { transform: translateY(-3px) scaleX(1.05); opacity: 0.85; } }
+@keyframes rainfall { 0% { transform: translateY(-6px); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(40px); opacity: 0; } }
+@keyframes grow { 0% { transform: scaleY(0.3); opacity: 0.4; } 100% { transform: scaleY(1); opacity: 1; } }
+
+/* Icons */
+.ic { --ia: var(--orange); --ib: var(--lav-d); --ic: var(--mint-d); --id: var(--ink); display: inline-flex; flex: none; }
+.ic.tile { --ia: var(--on-orange); --ib: rgba(255,255,255,0.92); --ic: rgba(255,255,255,0.92); --id: var(--on-orange); }
+.ic.tom { --ia: var(--orange); --ic: var(--mint-d); --id: var(--on-orange); }
+.ic.ink { --ia: var(--orange); --ib: var(--lav); --ic: var(--mint); --id: var(--on-ink); }
+.ic .hop { animation: hop 4.5s ease-in-out infinite; }
+.ic .slide { animation: slide 2.4s ease-in-out infinite alternate; }
+.ic .lid { transform-box: fill-box; transform-origin: 50% 0; animation: blink 5s ease-in-out infinite; }
+.ic .noz { animation: noz 2.6s ease-in-out infinite; }
+.ic .lay { transform-box: fill-box; transform-origin: 0 50%; animation: lay 4s ease-in-out infinite; }
+.ic .pen { animation: pen 3.6s ease-in-out infinite; }
+.ic .line { transform-box: fill-box; transform-origin: 0 50%; animation: line 3.6s ease-in-out infinite; }
+.ic .orbit { transform-box: view-box; transform-origin: 50% 50%; animation: orbit 6s linear infinite; }
+.ic .bub { animation: bub 3s ease-out infinite; }
+.ic .liq { animation: liq 3.4s ease-in-out infinite; }
+.ic .ecg { stroke-dasharray: 14 46; animation: ecg 2.2s linear infinite; }
+.ic .pls { transform-box: fill-box; transform-origin: 50% 50%; animation: pls 2.6s ease-in-out infinite; }
+.ic .live { animation: live-pulse 1.6s ease-in-out infinite; }
+.h2.hi { display: flex; align-items: center; gap: 10px; }
+
+/* Ambient effects */
+.ecgp { stroke-dasharray: 16 52; animation: ecg 2.4s linear infinite; }
+.pill .dt.breathe { animation: pls 2.8s ease-in-out infinite; }
+.ev.next { animation: breathe 3.4s ease-in-out infinite; }
+.rm.urgent { animation: chip 2.8s ease-in-out infinite; }
+.glow { animation: glow 3s ease-in-out infinite; }
+.sunhalo { transform-box: fill-box; transform-origin: 50% 50%; animation: halo 4s ease-in-out infinite; }
+.ev .when.near { animation: shake 1.2s ease-in-out 1; }
+.clock .colon { display: inline-block; transform-origin: 50% 60%; }
+.clock.flourish .colon { animation: colon 1.4s ease-in-out 2; color: var(--orange); }
+.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: bottom; }
+.roll > .o { position: absolute; left: 0; top: 0; animation: rollOut 0.6s ease-in forwards; }
+.roll > .n { display: inline-block; animation: rollIn 0.6s ease-out; }
+.cam-view img.fadein { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: fadein 1.2s ease-out; }
+.boot .card, .boot .tile { animation: rise 0.7s ease-out both; }
+.boot .col-left > :nth-child(1) { animation-delay: 0.05s; } .boot .col-left > :nth-child(2) { animation-delay: 0.15s; }
+.boot .col-mid > :nth-child(1) { animation-delay: 0.2s; } .boot .col-mid > :nth-child(2) { animation-delay: 0.3s; }
+.boot .col-right > * { animation-delay: 0.35s; } .boot .col-right > :nth-child(2) { animation-delay: 0.45s; } .boot .col-right > :nth-child(3) { animation-delay: 0.55s; } .boot .col-right > :nth-child(4) { animation-delay: 0.65s; }
+.glance { position: relative; }
+.glance > .ga { animation: fadeA 14s ease-in-out infinite; }
+.glance > .gb { position: absolute; inset: 0; animation: fadeB 14s ease-in-out infinite; }
+
+/* Burst of beads for milestones */
+.burst { position: absolute; z-index: 30; width: 0; height: 0; pointer-events: none; }
+.burst i { position: absolute; width: 12px; height: 12px; margin: -6px; border-radius: 50%; animation: burst 1.6s ease-out forwards; }
+
+/* Weather moods (optional) */
+.heat.shimmer .heat-plot::after { content: ''; position: absolute; left: 6%; right: 6%; top: 14%; height: 3px; border-radius: 2px; background: var(--orange); animation: shimmer 2.2s ease-in-out infinite; pointer-events: none; }
+
+/* Writing streak helix and focus week rings */
+.helix { flex: none; }
+.helix .rg { transform-box: fill-box; transform-origin: 50% 100%; }
+.helix .rg.today { animation: glow 2.4s ease-in-out infinite; }
+.wring { display: flex; justify-content: space-between; align-items: center; }
+
+/* Switches */
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation: none !important; transition: none !important; }
+html[data-m-icons="off"] .ic * { animation: none !important; }
+html[data-m-ambient="off"] .ev.next, html[data-m-ambient="off"] .rm.urgent, html[data-m-ambient="off"] .glow, html[data-m-ambient="off"] .ecgp, html[data-m-ambient="off"] .pill .dt.breathe, html[data-m-ambient="off"] .sunhalo,
+html[data-m-ambient="off"] .glance > .ga, html[data-m-ambient="off"] .glance > .gb { animation: none !important; }
+html[data-m-ambient="off"] .glance > .gb { display: none; }
+html[data-m-ambient="off"] .boot .card, html[data-m-ambient="off"] .boot .tile { animation: none !important; }
+html[data-m-sun="off"] #sunarc { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ic *, .ev.next, .rm.urgent, .glow, .ecgp, .pill .dt.breathe, .sunhalo, .glance > .ga, .glance > .gb, .boot .card, .boot .tile { animation: none !important; }
+  .glance > .gb { display: none; }
+}

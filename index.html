@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/companions.css">
+<link rel="stylesheet" href="css/motion.css">
 </head>
 <body>
 <div id="stage">
@@ -48,8 +50,9 @@
     </section>
 
     <div class="clock">
-      <div class="clock-time"><span id="clock-hm">9:41</span><span id="clock-ap">AM</span></div>
+      <div class="clock-time"><span id="clock-hm"><span id="clock-h">9</span><span class="colon">:</span><span id="clock-m">41</span></span><span id="clock-ap">AM</span></div>
       <div id="clock-date" class="clock-date muted"></div>
+      <div id="sunarc" aria-live="off"></div>
     </div>
   </header>
 
@@ -65,13 +68,9 @@
     </div>
 
     <div class="col col-right">
-      <div style="display:flex;flex-direction:column;gap:14px;flex:none">
-        <section id="tile-writing" class="tile tile-write" aria-label="Writing"></section>
-        <div class="tiles2">
-          <section id="tile-focus" class="tile tile-focus" aria-label="Focus"></section>
-          <section id="tile-device" class="tile tile-dev" aria-label="Device"></section>
-        </div>
-      </div>
+      <section id="tile-tablet" class="tile tile-tab" aria-label="Tablet"></section>
+      <section id="tile-writing" class="tile tile-write" aria-label="Writing" hidden></section>
+      <section id="tile-focus" class="tile tile-focus" aria-label="Focus" hidden></section>
       <section id="card-research" class="card research" aria-label="Research supervision"></section>
       <form id="ask" class="card ask">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex:none;fill:var(--orange)"><path d="M12 1.5l2.4 7.1 7.1 2.4-7.1 2.4L12 20.5l-2.4-7.1L2.5 11l7.1-2.4z"/></svg>
@@ -98,10 +97,44 @@
         <label class="field"><span>Latitude</span><input id="f-lat" type="text" inputmode="decimal" autocomplete="off"></label>
         <label class="field"><span>Longitude</span><input id="f-lon" type="text" inputmode="decimal" autocomplete="off"></label>
       </div>
-      <p class="hint muted">Coordinates drive the weather, heat index and rain outlook. Long-press your spot in Google Maps to copy them.</p>
+      <p class="hint muted">Coordinates drive the weather, heat index, rain outlook and the sun arc. Long-press your spot in Google Maps to copy them.</p>
 
-      <label class="field"><span>Data link (Google Apps Script web app URL)</span><input id="f-backend" type="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
-      <label class="field"><span>Token</span><input id="f-token" type="password" autocomplete="off" placeholder="The TOKEN you set in Script properties"></label>
+      <div class="sec" role="radiogroup" aria-label="Companion">
+        <h3>Companion</h3>
+        <div id="cpick" class="cpick"></div>
+      </div>
+
+      <div class="sec">
+        <h3>Motion</h3>
+        <div class="switches">
+          <label class="sw"><input id="f-motion" type="checkbox"><span>Motion<small>Off makes everything still</small></span></label>
+          <label class="sw"><input id="f-micons" type="checkbox"><span>Animated icons<small>Card header icons</small></span></label>
+          <label class="sw"><input id="f-mambient" type="checkbox"><span>Ambient life<small>Breathing, rolling numbers, fades</small></span></label>
+          <label class="sw"><input id="f-msun" type="checkbox"><span>Sun and moon arc<small>Under the clock</small></span></label>
+          <label class="sw"><input id="f-mmoods" type="checkbox"><span>Weather moods<small>Companion sweats in heat, holds an umbrella in rain</small></span></label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Optional tiles</h3>
+        <div class="switches">
+          <label class="sw"><input id="f-twriting" type="checkbox"><span>Writing<small>Streak helix and words this week</small></span></label>
+          <label class="sw"><input id="f-tfocus" type="checkbox"><span>Focus today<small>Week rings, 200 min a day goal</small></span></label>
+        </div>
+        <p class="hint muted">Each tile takes room from Research, so it shows fewer projects.</p>
+      </div>
+
+      <div class="sec">
+        <h3>What this tablet lets the page read</h3>
+        <div id="caps" class="rchips"></div>
+        <p class="hint muted">CPU load and temperature are not available to a web page.</p>
+      </div>
+
+      <div class="sec">
+        <h3>Data link</h3>
+        <label class="field"><span>Google Apps Script web app URL</span><input id="f-backend" type="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec"></label>
+        <label class="field"><span>Token</span><input id="f-token" type="password" autocomplete="off" placeholder="The TOKEN you set in Script properties"></label>
+      </div>
 
       <div class="status-line"><span id="test-result" class="muted" role="status"></span></div>
 

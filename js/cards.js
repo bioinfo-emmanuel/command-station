@@ -1,5 +1,6 @@
 // Card renderers. Each returns an HTML string; every piece of external text goes through esc().
-import { dayDiff, researchSummary, QUIET_DAYS } from './model.js';
+import { dayDiff, researchSummary, QUIET_DAYS, dateKey } from './model.js';
+import { icon } from './icons.js';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SAMPLE = '<span class="sample-tag">sample</span>';
@@ -12,6 +13,12 @@ function until(ms) {
   if (m < 60) return `in ${m} min`;
   const h = Math.floor(m / 60), r = m % 60;
   return r ? `in ${h} h ${r} m` : `in ${h} h`;
+}
+
+// small ring that drains as the next event gets closer (full at 3 hours out)
+function nextRing(ms) {
+  const f = Math.min(Math.max(ms / (3 * 3600000), 0), 1), c = 2 * Math.PI * 7;
+  return `<svg class="nring" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="7" stroke-width="3" style="stroke:rgba(29,27,22,0.22)"/><circle cx="9" cy="9" r="7" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(f * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 9 9)" style="stroke:var(--on-orange)"/></svg>`;
 }
 
 /* ---------- Today ---------- */
@@ -31,12 +38,12 @@ export function renderToday(model, now = new Date()) {
     const isNext = i === nextIdx;
     let when = '';
     if (past) when = '<span class="cnt" style="display:flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Done</span>';
-    else if (isNext && e.start - now < 3 * 3600000) when = `<span class="when soon">${until(e.start - now)}</span>`;
+    else if (isNext && e.start - now < 3 * 3600000) when = `<span class="when soon">${nextRing(e.start - now)}${until(e.start - now)}</span>`;
     else if (!e.allDay) when = `<span class="when">${until(e.start - now)}</span>`;
     const time = e.allDay ? '<b>All</b><span>day</span>' : `<b>${t.hm}</b><span>${t.ap}</span>`;
     return `<div class="ev${past ? ' past' : ''}${isNext ? ' next' : ''}" style="--c:${EVENT_COLORS[i % 4]}"><div class="tm">${time}</div><div class="bar"></div><div class="nm"><b>${esc(e.title)}</b><span>${esc(e.sub)}</span></div>${when}</div>`;
   }).join('') : '<div class="empty">Nothing on the calendar today.</div>';
-  return `<div class="row" style="justify-content:space-between"><h2 class="h2">Today</h2><div class="row" style="gap:8px">${model.source === 'sample' ? SAMPLE : ''}<span class="cnt">${evs.length} event${evs.length === 1 ? '' : 's'}</span></div></div>
+  return `<div class="row" style="justify-content:space-between"><h2 class="h2 hi">${icon('today')}Today</h2><div class="row" style="gap:8px">${model.source === 'sample' ? SAMPLE : ''}<span class="cnt">${evs.length} event${evs.length === 1 ? '' : 's'}</span></div></div>
     <div class="daystrip" aria-hidden="true">${strip.join('')}</div>
     <div class="evlist">${rows}</div>`;
 }
@@ -52,57 +59,71 @@ export function renderTasks(model) {
   const rows = shown.length ? shown.map((t) =>
     `<div class="tk${t.done ? ' done' : ''}"><div class="bx${t.done ? ' ok' : ''}">${t.done ? CHECK : ''}</div><div class="tt">${esc(t.title)}</div>${t.tag ? `<span class="tg-chip">${esc(t.tag)}</span>` : ''}</div>`
   ).join('') : '<div class="empty">No open tasks. Nice.</div>';
-  return `<div class="row" style="justify-content:space-between"><h2 class="h2">Tasks</h2>${head}</div><div>${rows}</div>`;
+  return `<div class="row" style="justify-content:space-between"><h2 class="h2 hi">${icon('tasks')}Tasks</h2>${head}</div><div>${rows}</div>`;
 }
 
 /* ---------- Tiles ---------- */
+export function streakOf(touched, now = new Date()) {
+  const set = new Set(touched || []);
+  const key = (n) => dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - n));
+  let n = set.has(key(0)) ? 0 : 1, c = 0;
+  while (set.has(key(n))) { c++; n++; }
+  return c;
+}
+
+// Two-strand helix over the last 14 days. Filled beads = days you touched the draft.
+function helix(touched, now) {
+  const set = new Set(touched || []);
+  const beads = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (13 - i));
+    const on = set.has(dateKey(d)), x = 7 + i * 13.5, ph = i * 0.62;
+    const ya = 20 + Math.sin(ph) * 9, yb = 20 - Math.sin(ph) * 9;
+    const today = i === 13;
+    beads.push(`<line x1="${x}" y1="${ya.toFixed(1)}" x2="${x}" y2="${yb.toFixed(1)}" stroke-width="2" style="stroke:var(--on-orange);opacity:${on ? 0.5 : 0.15}"/>`
+      + `<circle class="rg${today ? ' today' : ''}" cx="${x}" cy="${ya.toFixed(1)}" r="${on ? 4 : 3}" style="fill:${on ? 'var(--on-orange)' : 'none'};stroke:var(--on-orange);stroke-width:1.8;opacity:${on ? 1 : 0.4}"/>`
+      + `<circle cx="${x}" cy="${yb.toFixed(1)}" r="${on ? 3 : 2.4}" style="fill:${on ? 'var(--orange)' : 'none'};stroke:var(--on-orange);stroke-width:1.5;opacity:${on ? 1 : 0.35}"/>`);
+  }
+  return `<svg class="helix" width="190" height="40" viewBox="0 0 190 40" role="img" aria-label="Writing days over the last two weeks">${beads.join('')}</svg>`;
+}
+
 export function renderWriting(model, now = new Date()) {
   const w = model.writing;
-  if (!w) return `<div class="grow"><div class="lab">Writing</div><div class="ttl">No writing project yet</div></div>`;
+  if (!w) return `<div class="grow"><div class="lab">${icon('writing', 26, 'tile')}Writing</div><div class="ttl">No writing project yet</div></div>`;
   const since = w.lastTouched ? dayDiff(now, w.lastTouched) : null;
-  const segs = Array.from({ length: Math.min(w.sectionsTotal, 8) }, (_, i) => {
-    const d = w.sectionsDone - i;
-    return `<i class="${d >= 1 ? 'f' : d >= 0.5 ? 'h' : ''}"></i>`;
-  }).join('');
-  return `<div class="grow"><div class="lab">Writing${since != null ? `<span>${since === 0 ? 'touched today' : `${since} d since last touch`}</span>` : ''}${model.source === 'sample' ? SAMPLE : ''}</div>
-    <div class="ttl">${esc(w.project)}</div><div class="segs" aria-hidden="true">${segs}</div></div>
-    <div class="big"><b>+${Math.round(w.wordsWeek).toLocaleString('en-US')}</b><span>words this week</span></div>`;
+  const streak = streakOf(w.touched, now);
+  const words = `+${Math.round(w.wordsWeek).toLocaleString('en-US')}`;
+  const second = streak > 1 ? `${streak}-day streak` : since != null ? (since === 0 ? 'touched today' : `${since} d since touch`) : '';
+  return `<div class="grow"><div class="lab">${icon('writing', 26, 'tile')}Writing${model.source === 'sample' ? SAMPLE : ''}</div>
+    <div class="ttl">${esc(w.project)}</div>${helix(w.touched, now)}</div>
+    <div class="big glance"><div class="ga"><b>${words}</b><span>words this week</span></div>${second ? `<div class="gb"><b>${streak > 1 ? streak : '·'}</b><span>${esc(second)}</span></div>` : ''}</div>`;
 }
 
-export function renderFocus(model) {
+export const FOCUS_GOAL_MIN = 200; // 8 Pomodoros of 25 minutes
+export function renderFocus(model, now = new Date()) {
   const f = model.focus;
   const h = Math.floor(f.todayMin / 60), m = f.todayMin % 60;
-  const max = Math.max(1, ...f.week);
-  const bars = f.week.map((v) => `<i style="height:${Math.max(4, Math.round((v / max) * 20))}px"></i>`).join('');
-  return `<div class="hd"><span>Focus today${model.source === 'sample' ? ' ' + SAMPLE : ''}</span><span style="font-weight:700">7 days</span></div>
-    <div class="num">${h ? `${h}h ` : ''}${m}m</div><div class="wk" role="img" aria-label="Focus minutes over the last seven days">${bars}</div>`;
-}
-
-export function renderDevice(tab, battery, laptopOnline) {
-  const tabs = `<div class="devtabs"><button type="button" data-tab="laptop" class="${tab === 'laptop' ? 'on' : ''}">Laptop</button><button type="button" data-tab="tablet" class="${tab === 'tablet' ? 'on' : ''}">Tablet</button></div>`;
-  if (tab === 'laptop') {
-    if (!laptopOnline) {
-      return `${tabs}<div class="dev-body" style="flex-direction:row;align-items:center;gap:10px"><div><div class="bat" style="font-size:22px;line-height:1.1">Laptop is asleep</div><div class="bat-sub">Stats return when it wakes</div></div>
-        <div style="position:relative;width:54px;height:48px;flex:none"><svg width="54" height="42" viewBox="0 0 54 42" fill="none" aria-hidden="true"><rect x="9" y="4" width="36" height="24" rx="4" stroke="currentColor" stroke-width="2.4"/><path d="M3 34h48" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M20 15q7 5 14 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span class="zz" style="position:absolute;left:38px;top:2px;font-size:15px;color:var(--mint)">z</span><span class="zz" style="position:absolute;left:38px;top:2px;font-size:15px;color:var(--mint);animation-delay:-1.7s">z</span></div></div>`;
-    }
-    return `${tabs}<div class="dev-body"><div class="meter"><span>CPU</span><div class="trk"><i style="width:23%;background:var(--orange)"></i></div><b>23%</b></div>
-      <div class="meter"><span>RAM</span><div class="trk"><i style="width:59%;background:var(--mint)"></i></div><b>59%</b></div></div>`;
-  }
-  const lvl = battery ? Math.round(battery.level * 100) : null;
-  return `${tabs}<div class="dev-body" style="gap:2px"><div class="bat">${lvl == null ? '–' : lvl + '%'}</div><div class="bat-sub">Tablet${battery ? (battery.charging ? ' · charging' : ' · on battery') : ' · battery not available'}</div></div>`;
+  const c = 2 * Math.PI * 7.5;
+  const rings = f.week.map((v, i) => {
+    const frac = Math.min(v / FOCUS_GOAL_MIN, 1);
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
+    return `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-label="${day.toLocaleDateString('en-US', { weekday: 'short' })}: ${v} minutes"><circle cx="11" cy="11" r="7.5" stroke-width="3.4" style="stroke:var(--on-orange);opacity:0.2"/><circle cx="11" cy="11" r="7.5" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="${(frac * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 11 11)" style="stroke:var(--on-orange);opacity:${i === 6 ? 1 : 0.7}"/></svg>`;
+  }).join('');
+  return `<div class="hd"><span class="h2 hi" style="font-size:14px;gap:8px">${icon('focus', 24, 'tile')}Focus today${model.source === 'sample' ? ' ' + SAMPLE : ''}</span><span style="font-weight:700">7 days</span></div>
+    <div class="num">${h ? `${h}h ` : ''}${m}m</div><div class="wring" role="img" aria-label="Focus minutes over the last seven days">${rings}</div>`;
 }
 
 /* ---------- Research supervision ---------- */
 const ROLE = { adviser: ['var(--lav-d)', 'var(--lav-soft)'], lead: ['var(--orange)', 'var(--orange-soft)'], 'co-lead': ['var(--mint-d)', 'var(--mint-soft)'] };
-export function renderResearch(model, now = new Date()) {
+export function renderResearch(model, now = new Date(), maxRows = 4) {
   const list = [...model.research].sort((a, b) => (a.milestoneDate ? +a.milestoneDate : Infinity) - (b.milestoneDate ? +b.milestoneDate : Infinity));
   const sum = researchSummary(list, now);
-  const rows = list.slice(0, 5).map((p) => {
+  const rows = list.slice(0, maxRows).map((p) => {
     const [c, cs] = ROLE[p.role.toLowerCase()] || ['var(--muted)', 'var(--soft)'];
     const quiet = p.lastUpdate && dayDiff(now, p.lastUpdate) > QUIET_DAYS;
     const dd = p.milestoneDate ? dayDiff(p.milestoneDate, now) : null;
     let chip = '';
-    if (quiet) chip = `<span class="rm quiet">Quiet · ${dayDiff(now, p.lastUpdate)} d</span>`;
+    if (quiet) chip = `<span class="rm quiet">Quiet · ${dayDiff(now, p.lastUpdate)} d<span class="zz qz">z</span></span>`;
     else if (p.milestone || dd != null) {
       const when = dd == null ? '' : dd < 0 ? `${-dd} d overdue` : dd === 0 ? 'today' : `${dd} d`;
       chip = `<span class="rm${dd != null && dd <= 3 ? ' urgent' : ''}">${esc(p.milestone)}${p.milestone && when ? ' · ' : ''}${when}</span>`;
@@ -113,7 +134,7 @@ export function renderResearch(model, now = new Date()) {
     return `<div class="rr" style="--c:${c};--cs:${cs}"><div class="rt"><span class="rl">${esc(p.role || '·')}</span><span class="rn">${esc(p.title)}</span>${chip}</div>
       <div class="rs"><div class="sgs">${segs}</div><span class="st">${esc(stepName)}${n ? ` · ${p.current}/${n}` : ''}</span></div></div>`;
   }).join('') || '<div class="empty">Add rows to the Research tab to see your projects here.</div>';
-  return `<div class="row"><h2 class="h2">Research supervision</h2><span style="flex:1"></span>${model.source === 'sample' ? SAMPLE + '&nbsp;' : ''}<span class="cnt">${model.researchTotal} project${model.researchTotal === 1 ? '' : 's'}</span></div>
+  return `<div class="row"><h2 class="h2 hi">${icon('research', 30)}Research supervision</h2><span style="flex:1"></span>${model.source === 'sample' ? SAMPLE + '&nbsp;' : ''}<span class="cnt">${model.researchTotal} project${model.researchTotal === 1 ? '' : 's'}</span></div>
     <div class="chips"><span class="tag" style="background:var(--orange-soft)">${sum.dueMonth} due this month</span><span class="tag" style="background:var(--butter-soft)">${sum.quiet} gone quiet</span><span class="tag" style="background:var(--lav-soft)">${sum.ethics} in ethics</span></div>
     <div class="rlist">${rows}</div>`;
 }
@@ -139,7 +160,7 @@ export function renderCamera(cam, now = new Date()) {
   let scene;
   if (live) {
     const taken = cam.at ? `${cam.at.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })} · ${clock12(cam.at).hm} ${clock12(cam.at).ap}` : '';
-    scene = `<img src="data:image/jpeg;base64,${esc(cam.image)}" alt="Latest snapshot from the downstairs camera" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+    scene = `<img src="data:image/jpeg;base64,${esc(cam.image)}" alt="Latest snapshot from the downstairs camera" class="${cam.fade ? 'fadein' : ''}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
       <div class="glass" style="left:14px;top:14px">Cam 1 · Downstairs</div>
       <div class="glass" style="left:14px;bottom:14px">${esc(taken)}</div>`;
   } else if (sample && online) {
@@ -173,12 +194,12 @@ export function renderCamera(cam, now = new Date()) {
     const bars = Array.from({ length: 24 }, (_, i) => `<i class="${[7, 8, 9].includes(i) ? 'm' : ''}" style="${i === 7 ? 'height:36px' : i === 8 ? 'height:26px' : i === 6 ? 'height:20px' : i === 9 ? 'height:14px' : ''}"></i>`).join('');
     foot = `<div class="motion"><div style="display:flex;flex-direction:column;gap:1px"><b style="font-size:15px;font-weight:800">Motion today</b><span class="muted small">3 events · last at 8:12 AM</span></div><div class="bars" role="img" aria-label="Motion activity by hour">${bars}</div></div>`;
   }
-  return `<div class="cam-hd"><h2 class="h2">Downstairs</h2>${sample ? SAMPLE : ''}<span class="cam-stat"><i class="${online ? 'live-dot' : ''}" style="background:${online ? 'var(--orange)' : 'var(--muted)'}"></i>${status}</span></div>
+  return `<div class="cam-hd"><h2 class="h2 hi">${icon('cam')}Downstairs</h2>${sample ? SAMPLE : ''}<span class="cam-stat"><i class="${online ? 'live-dot' : ''}" style="background:${online ? 'var(--orange)' : 'var(--muted)'}"></i>${status}</span></div>
     <div class="cam-view">${scene}</div>${foot}`;
 }
 
 export function renderPrinter(online) {
-  const head = `<div class="row" style="gap:12px"><h2 class="h2">Bambu Lab A1 Mini</h2>${SAMPLE}
+  const head = `<div class="row" style="gap:12px"><h2 class="h2 hi">${icon('printer')}Bambu Lab A1 Mini</h2>${SAMPLE}
       ${online ? '<div class="prn-pill"><i class="live-dot"></i>Printing</div>' : '<div class="cnt">Paused</div>'}
       <span style="flex:1"></span><div class="fil"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/></svg>Filament<div class="trk"><i></i></div>68%</div>
       <span class="muted" style="font-size:14px">bracket_v3_x4.3mf</span></div>`;

@@ -27,7 +27,7 @@ export function sampleModel(now = new Date()) {
       { title: 'Reply to ovitrap team on field plan', tag: 'Advising', done: false },
       { title: 'Order filament for the A1 Mini', tag: 'Printer', done: false },
     ],
-    writing: { project: 'AI in vector biology review', wordsWeek: 840, lastTouched: ago(6), sectionsTotal: 5, sectionsDone: 2.5 },
+    writing: { project: 'AI in vector biology review', wordsWeek: 840, lastTouched: ago(0), touched: [0, 1, 2, 4, 5, 8, 9, 10, 11, 12].map((n) => dateKey(ago(n))), sectionsTotal: 5, sectionsDone: 2.5 },
     focus: { todayMin: 200, week: [70, 110, 90, 140, 50, 30, 200] },
     research: [
       { title: 'Aedes ovitrap surveillance', role: 'Adviser', group: 'Students', steps: ['Site selection', 'Ovitrap setting', 'Egg collection & rearing', 'Species identification', 'Analysis', 'Manuscript'], current: 2, milestone: 'Field check', milestoneDate: ahead(2), lastUpdate: ago(1) },
@@ -39,6 +39,14 @@ export function sampleModel(now = new Date()) {
     researchTotal: 14,
   };
 }
+
+// "2026-10-30, 2026-11-01" (or one per line) -> set of day keys; falls back to the last-touched day
+export function parseDates(v, fallback) {
+  const out = String(v || '').split(/[,;\s]+/).map((x) => toDate(x)).filter(Boolean).map(dateKey);
+  if (fallback) out.push(dateKey(fallback));
+  return out;
+}
+export { dateKey };
 
 /* ---------- normalize the Apps Script feed ---------- */
 export function fromBackend(data, now = new Date()) {
@@ -57,6 +65,7 @@ export function fromBackend(data, now = new Date()) {
     project: w.project || 'Writing',
     wordsWeek: num(w.words_this_week),
     lastTouched: toDate(w.last_touched),
+    touched: parseDates(w.touched_dates, toDate(w.last_touched)),
     sectionsTotal: Math.max(1, num(w.sections_total, 5)),
     sectionsDone: num(w.sections_done),
   } : null;

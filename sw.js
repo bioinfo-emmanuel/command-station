@@ -1,6 +1,6 @@
 // Network-first for the app shell so updates show up immediately; falls back to cache when offline.
 // Calls to other origins (weather, data link) are never cached here; the app keeps its own last-good copy.
-const CACHE = 'command-station-shell-v1';
+const CACHE = 'command-station-shell-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {

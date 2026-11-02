@@ -30,7 +30,7 @@ Deploy > Manage deployments > edit (pencil) > Version: **New version** > Deploy.
   "updatedAt": "2026-11-02T01:00:00.000Z",
   "events":   [{ "title": "", "start": "ISO", "end": "ISO", "allDay": false, "location": "", "calendar": "" }],
   "tasks":    [{ "title": "", "due": "ISO or empty", "list": "", "done": false }],
-  "writing":  [{ "project": "", "words_this_week": 0, "last_touched": "ISO", "sections_total": 5, "sections_done": 2 }],
+  "writing":  [{ "project": "", "words_this_week": 0, "last_touched": "ISO", "sections_total": 5, "sections_done": 2, "touched_dates": "2026-10-30, 2026-11-01" }],
   "focus":    [{ "date": "ISO", "minutes": 0 }],
   "research": [{ "title": "", "group": "", "role": "", "steps": "A > B > C", "current_step": 2,
                  "next_milestone": "", "milestone_date": "ISO", "last_update": "ISO", "public": false }]
